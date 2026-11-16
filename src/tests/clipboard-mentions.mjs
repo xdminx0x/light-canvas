@@ -78,6 +78,7 @@ try{
  const imageOption=await page.evaluate(async()=>{const p=window.__lcBackend.getState().provider['openai-images'];await fetch('/api/providers/'+p.id,{method:'PUT',body:JSON.stringify({...p,baseUrl:'https://light-canvas-test.invalid/v1',apiKey:'test-key'})});return p.id+'::'+p.models[0];});
  await page.getByRole('button',{name:'生图',exact:true}).click();await page.locator('details.node-configuration').evaluate(e=>e.open=true);
  await page.getByRole('combobox',{name:'节点模型'}).selectOption(imageOption);
+ const modelList=await page.getByRole('combobox',{name:'节点模型'}).locator('optgroup').first().locator('option').allTextContents();assert.ok(modelList.indexOf('gpt-image-2.6-flare')<modelList.indexOf('gpt-image-2'),'newer model versions are shown first');
  await field.press('Control+Enter');
  await page.waitForFunction(id=>Object.values(window.__lcBackend.getState().run).some(r=>r.workspaceId===id&&r.status==='completed'),wid).catch(async error=>{console.log(JSON.stringify(await page.evaluate(id=>({runs:Object.values(window.__lcBackend.getState().run).filter(r=>r.workspaceId===id).map(r=>({status:r.status,error:r.error})),toast:document.querySelector('.toast')?.innerText}),wid)));console.log('intercepted requests',requests.length,'page errors',errors);throw error;});
  assert.equal(requests.length,1);assert.equal(requests[0].headers.authorization,'Bearer test-key');
@@ -89,8 +90,8 @@ try{
  }
  // Unknown @ references are rejected before any paid request can be made.
  await field.fill('使用@图999999');await field.press('Control+Enter');await page.waitForTimeout(900);assert.equal(requests.length,1);
- // A generated image is available in the @ picker immediately, without reloading.
- await field.fill('@');assert.equal(await page.getByRole('listbox',{name:'选择参考图片'}).getByRole('option').count(),7);
+ // Image mode only offers incoming references, not the new unconnected output.
+ await field.fill('@');assert.equal(await page.getByRole('listbox',{name:'选择参考图片'}).getByRole('option').count(),2);
  // The same reference mapping works in the chat JSON protocol.
  await field.fill('对比@图1和@图2，保留我的原句');
  const chatOption=await page.evaluate(async()=>{const p=window.__lcBackend.getState().provider['openai-chat'];await fetch('/api/providers/'+p.id,{method:'PUT',body:JSON.stringify({...p,baseUrl:'https://light-canvas-test.invalid/v1',apiKey:'test-key'})});return p.id+'::'+p.models[0];});

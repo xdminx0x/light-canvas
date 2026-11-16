@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import vm from 'node:vm';
+const context={window:{}};vm.runInNewContext(await readFile(new URL('../image-references.js',import.meta.url),'utf8'),context);const api=context.window.LightCanvasImages;
+const node=(id,assetIds,extra={})=>({id,data:{kind:'image',assetIds,...extra}});
+let workspace={nodes:[node('unconnected-copy',['a']),node('ref',['a']),node('other',['b']),node('result',[],{runId:'r'}),node('input',['own'],{kind:'input',mode:'image',prompt:''})],edges:[{id:'ref-edge',source:'ref',target:'input',data:{kind:'reference'}},{id:'history-edge',source:'result',target:'input',data:{kind:'history'}},{id:'outgoing',source:'input',target:'other',data:{kind:'reference'}}],imageLabels:{a:'图1',b:'图2',c:'图3',d:'图4',own:'图5'}};
+const runs={r:{assetIds:['c','d']}},ids=()=>Array.from(api.candidates(workspace,'input',runs).map(i=>i.assetId));
+assert.deepEqual(ids(),['a','c','d','own']);assert.equal(api.candidates(workspace,'input',runs)[0].nodeId,'ref','use the connected duplicate, not the unconnected node');
+workspace.nodes.at(-1).data.prompt='使用@图2';assert.throws(()=>api.resolve(workspace,'input',runs,{},true),/未连接/);
+workspace.nodes.at(-1).data.prompt='使用@图4和@图1';const resolved=api.resolve(workspace,'input',runs,{},true);assert.equal(api.transmitted(workspace.nodes.at(-1).data.prompt,resolved),'使用第3张参考图和第1张参考图');
+workspace={...workspace,edges:workspace.edges.filter(e=>e.id!=='ref-edge')};assert.deepEqual(ids(),['c','d','own']);assert.throws(()=>api.resolve(workspace,'input',runs,{},true),/未连接/);
+workspace={...workspace,edges:[...workspace.edges,{id:'new',source:'other',target:'input',data:{kind:'reference'}}]};assert.deepEqual(ids(),['b','c','d','own']);
+workspace={...workspace,edges:[]};assert.deepEqual(ids(),['own']);workspace.nodes.at(-1).data.assetIds=[];assert.deepEqual(ids(),[]);
+workspace.nodes.at(-1).data.mode='chat';assert.deepEqual(ids(),['a','b','c','d'],'chat retains its existing global scope');
+console.log('Reference scope passed: incoming connections, own attachments, duplicate sources, multiple run outputs, outgoing/unconnected exclusion, reconnect/disconnect, manual mention validation and chat scope.');

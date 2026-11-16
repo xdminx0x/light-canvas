@@ -19621,7 +19621,7 @@ function lcAssetImage(props) {
 function lc15PromptEditor({nodeId,data,context,note}) {
   const [draft,setDraft]=L.useState(data.prompt||''),[query,setQuery]=L.useState(null),[active,setActive]=L.useState(0);
   const composing=L.useRef(false),field=L.useRef(null),menu=L.useRef(null);
-  const images=window.LightCanvasImages.catalog(context.workspace,context.runs,context.assets);
+  const images=window.LightCanvasImages.candidates(context.workspace,nodeId,context.runs,context.assets);
   const options=query?images.filter(image=>('@'+image.label).includes(query.text.replace('@图片','@图'))||image.name.toLowerCase().includes(query.text.replace('@','').toLowerCase())):[];
   const bounds=field.current?.getBoundingClientRect(),menuWidth=Math.min(window.innerWidth-24,Math.max(260,bounds?.width||300)),menuHeight=Math.min(260,window.innerHeight-24);
   const menuStyle=bounds?{position:'fixed',width:menuWidth,left:Math.max(12,Math.min(bounds.left,window.innerWidth-menuWidth-12)),right:'auto',top:bounds.bottom+menuHeight+8>window.innerHeight-12?Math.max(12,bounds.top-menuHeight-4):bounds.bottom+4,maxHeight:menuHeight}:undefined;
@@ -19644,7 +19644,7 @@ function lc15PromptEditor({nodeId,data,context,note}) {
   return b.jsxs("div",{className:"prompt-editor nodrag nopan nowheel",children:[b.jsx("textarea",{
     ref:field,id:'lc-prompt-'+nodeId,className:"prompt-input nodrag nopan nowheel","aria-label":note?"笔记内容":"提示词",
     "aria-expanded":!!query,"aria-controls":query?'lc-images-'+nodeId:undefined,
-    placeholder:note?"记下想法…":data.mode==='image'?"描述画面，输入 @ 引用画布中的图片…":"写下提示词，输入 @ 引用图片…",
+    placeholder:note?"记下想法…":data.mode==='image'?"描述画面，输入 @ 引用已连接的图片…":"写下提示词，输入 @ 引用图片…",
     value:draft,onPointerDown:event=>event.stopPropagation(),onClick:event=>{event.stopPropagation();detect(event.currentTarget.value,event.currentTarget.selectionStart);},
     onCompositionStart:()=>{composing.current=true;setQuery(null);},
     onCompositionEnd:event=>{composing.current=false;commit(event.currentTarget.value);detect(event.currentTarget.value,event.currentTarget.selectionStart);},
@@ -19660,7 +19660,7 @@ function lc15PromptEditor({nodeId,data,context,note}) {
     },onKeyUp:event=>event.stopPropagation()
   }),query&&Jc.createPortal(b.jsxs("div",{ref:menu,className:"image-mention-menu",style:menuStyle,id:'lc-images-'+nodeId,role:'listbox',"aria-label":"选择参考图片",children:[
     b.jsx("div",{className:"image-mention-heading",children:"选择参考图片"}),
-    options.length?options.map((image,index)=>b.jsxs("button",{type:'button',role:'option',"aria-selected":active%options.length===index,className:active%options.length===index?'is-active':'',onMouseDown:event=>event.preventDefault(),onClick:()=>choose(image),children:[b.jsx(lcAssetImage,{src:window.__lcAssetUrl(image.assetId),alt:''}),b.jsxs("span",{children:[b.jsx("strong",{children:'@'+image.label}),b.jsx("small",{children:image.name})]})]},image.assetId)):b.jsx("p",{children:images.length?'没有匹配的图片':'先粘贴或导入图片到画布'})
+    options.length?options.map((image,index)=>b.jsxs("button",{type:'button',role:'option',"aria-selected":active%options.length===index,className:active%options.length===index?'is-active':'',onMouseDown:event=>event.preventDefault(),onClick:()=>choose(image),children:[b.jsx(lcAssetImage,{src:window.__lcAssetUrl(image.assetId),alt:''}),b.jsxs("span",{children:[b.jsx("strong",{children:'@'+image.label}),b.jsx("small",{children:image.name})]})]},image.assetId)):b.jsx("p",{children:images.length?'没有匹配的图片':data.mode==='image'?'请先连接参考图片到当前节点':'先粘贴或导入图片到画布'})
   ]}),document.body)]});
 }
 function lc15ClipboardImages(clipboard) {
@@ -20740,7 +20740,7 @@ function V8() {
   },[Pt,pasteImages,be]);
   const mentionImage=L.useCallback((nodeId,assetId,prompt)=>{
     Ye(workspace=>{
-      const image=window.LightCanvasImages.catalog(workspace,pt.current,m).find(item=>item.assetId===assetId);
+      const image=window.LightCanvasImages.candidates(workspace,nodeId,pt.current,m).find(item=>item.assetId===assetId);
       if(!image)return workspace;
       const edge=image.nodeId!==nodeId&&Cm(workspace,image.nodeId,nodeId)?Em(image.nodeId,nodeId,'reference'):null;
       return {...workspace,edges:edge?[...workspace.edges,edge]:workspace.edges,nodes:workspace.nodes.map(node=>node.id===nodeId?{...node,data:{...node.data,prompt,excludedImageIds:(node.data.excludedImageIds||[]).filter(id=>id!==assetId)}}:node)};
