@@ -13,3 +13,6 @@ __pycache__/
 *.log
 .DS_Store
 Thumbs.db
+
+# 本机画布、图片和密钥
+/data/

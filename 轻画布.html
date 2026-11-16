@@ -127,11 +127,32 @@
 .node-configuration + .input-bottom { margin-top:12px; }
 @media(prefers-reduced-motion:reduce){.node-configuration-chevron{transition:none;}}
 
+/* Saved generation context and per-workspace history. */
+.generation-details{margin:24px 0;text-align:left;font-size:14px}
+.generation-details h2{font-size:15px;margin:22px 0 8px;font-weight:600}
+.generation-prompt{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;max-width:75ch;margin:0}
+.generation-references{display:flex;gap:16px;flex-wrap:wrap}
+.generation-references figure{margin:0;width:128px;min-width:0}
+.generation-references img{display:block;width:128px;height:96px;object-fit:contain;background:#f4f4f4;border-radius:8px}
+.generation-references figcaption{font-size:12px;line-height:1.5;margin-top:6px;overflow-wrap:anywhere;color:#555}
+.image-history{padding:4px 24px 24px;overflow:auto;min-height:0}
+.image-history-entry{padding:24px 0;border-bottom:1px solid #e4e4e4}
+.image-history-entry header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px}
+.image-history-entry time{color:#555;font-variant-numeric:tabular-nums}
+.history-results{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0}
+.history-result{width:180px;padding:0;border:0;background:transparent;text-align:left;cursor:pointer}
+.history-result img{width:180px;height:140px;object-fit:contain;background:#f4f4f4;border-radius:8px}
+.history-result span{display:block;font-size:12px;overflow-wrap:anywhere;margin-top:6px;color:#555}
+.history-result:hover img{background:#e8e8e8}
+.history-result:focus-visible{outline:2px solid #333;outline-offset:4px}
+.history-empty{padding:40px 0;text-align:center;color:#555}
+@media(max-width:600px){.history-result,.history-result img{width:140px}.history-result img{height:110px}.generation-references figure,.generation-references img{width:110px}}
+
 
 #folder-gate{position:fixed;z-index:9999;inset:0;background:#f7f7f7;display:grid;place-items:center;font:15px/1.7 system-ui,-apple-system,sans-serif;color:#272727;padding:24px}
 #folder-gate[hidden]{display:none}#folder-panel{background:#fff;border:1px solid #ddd;border-radius:16px;max-width:520px;padding:36px;box-shadow:0 12px 36px #00000010}
 #folder-panel h1{font-size:25px;margin:0 0 12px;letter-spacing:-.02em}#folder-panel p{color:#555;margin:8px 0 18px}#folder-panel button{border:1px solid #bbb;border-radius:8px;background:#fff;padding:10px 15px;cursor:pointer;color:#222;font:inherit;margin:0 8px 8px 0}#folder-panel button:first-of-type{background:#292929;color:white;border-color:#292929}#folder-status{min-height:1.5em;font-size:13px;color:#666}
-</style></head><body><div id="root"></div><div id="folder-gate"><div id="folder-panel"><h1>打开轻画布</h1><p>选择一个保存画布与图片的文件夹。请选择本包中的“画布数据”文件夹，以读取原有 API 配置。以后双击这个 HTML，选回同一文件夹即可继续。Windows 与 Mac 的操作相同。</p><button id="choose-folder">选择数据文件夹</button><button id="import-data">导入备份到文件夹</button><button id="download-data">临时打开</button><input id="import-file" type="file" accept=".zip" hidden><div id="folder-status"></div></div></div><script id="lc-seed" type="application/json">{"state":{"workspace":{},"provider":{},"run":{},"asset":{},"preferences":{},"format":"light-canvas-html-v1","keys":{},"envKeys":{}},"assets":{}}</script><script>/*!
+</style></head><body><div id="root"></div><div id="folder-gate"><div id="folder-panel"><h1>打开轻画布</h1><p>选择一个保存画布与图片的文件夹。请选择项目中的“data”文件夹，以读取原有 API 配置。以后双击这个 HTML，选回同一文件夹即可继续。Windows 与 Mac 的操作相同。</p><button id="choose-folder">选择数据文件夹</button><button id="import-data">导入备份到文件夹</button><button id="download-data">临时打开</button><input id="import-file" type="file" accept=".zip" hidden><div id="folder-status"></div></div></div><script id="lc-seed" type="application/json">{"state":{"workspace":{},"provider":{},"run":{},"asset":{},"preferences":{},"format":"light-canvas-html-v1","keys":{},"envKeys":{}},"assets":{}}</script><script>/*!
 
 JSZip v3.10.1 - A JavaScript class for generating and reading zip files
 <http://stuartk.com/jszip>
@@ -332,7 +353,8 @@ window.LightCanvasImages=(()=>{
     try {
       if (window.showDirectoryPicker) {
         const handle = await savedHandle();
-        if (handle && await handle.queryPermission({mode:'readwrite'}) === 'granted') { await installFolder(handle); return; }
+        if (handle && handle.name === 'data' && await handle.queryPermission({mode:'readwrite'}) === 'granted') { await installFolder(handle); return; }
+        if (handle && handle.name !== 'data') { status.textContent = '请选择 light-canvas 项目内的 data 文件夹，画布、图片与接口配置将保存在一起。'; return; }
         if (handle) status.textContent = '需要重新授权上次使用的数据文件夹。';
       } else status.textContent = '此浏览器无法自动写入文件夹。建议用 Chrome 或 Edge 打开。';
     } catch(e) { status.textContent = `请重新选择数据文件夹：${e.message}`; }
@@ -445,7 +467,7 @@ window.LightCanvasImages=(()=>{
     if(m=/^\/api\/runs\/([^/]+)$/.exec(path)){const r=state.run[m[1]];return r?response(r):failure('任务不存在',404)}
     if(path==='/api/backup'){return new Response(await backup(),{headers:{'Content-Type':'application/zip'}})}
     if(path==='/api/restore'&&method==='POST'){const zip=await JSZip.loadAsync(options.body);const imported=JSON.parse(await zip.file('canvas.json').async('string'));assert(imported.format==='light-canvas-html-v1','备份格式不匹配');const ids=[];for(const w of Object.values(imported.workspace)){const id=crypto.randomUUID();ids.push(id);state.workspace[id]={...w,id,name:`${w.name}（导入）`,version:0}}for(const [id,p] of Object.entries(imported.provider))if(!state.provider[id])state.provider[id]=p;for(const [id,a] of Object.entries(imported.asset)){if(!state.asset[id]){const file=zip.file(`assets/${id}`);if(file){const blob=await file.async('blob');if(assetFolder)await writeFile(await assetFolder.getFileHandle(id,{create:true}),blob);if(!assetFolder)memoryAssets.set(id,blob);state.asset[id]=a}}}await save();return response({workspaceIds:ids},201)}
-    if(path==='/api/cleanup/preview'||path==='/api/cleanup'){const used=new Set();for(const w of all('workspace'))for(const n of w.nodes)for(const id of n.data?.assetIds||[])used.add(id);for(const r of all('run'))for(const id of r.assetIds||[])used.add(id);const removable=all('asset').filter(a=>!used.has(a.id));if(path==='/api/cleanup'){for(const a of removable){delete state.asset[a.id];memoryAssets.delete(a.id);URL.revokeObjectURL(urls.get(a.id));urls.delete(a.id);if(assetFolder)await assetFolder.removeEntry(a.id).catch(()=>{});if(thumbnailFolder)await thumbnailFolder.removeEntry(a.id+'.webp').catch(()=>{})}await save()}return response({assetCount:removable.length,bytes:removable.reduce((n,a)=>n+a.size,0),removedAssetCount:path==='/api/cleanup'?removable.length:0})}
+    if(path==='/api/cleanup/preview'||path==='/api/cleanup'){const used=new Set();for(const w of all('workspace'))for(const n of w.nodes)for(const id of n.data?.assetIds||[])used.add(id);for(const r of all('run')){for(const id of r.assetIds||[])used.add(id);for(const id of r.snapshot?.assetIds||[])used.add(id);for(const a of r.snapshot?.attachments||[])used.add(a.assetId||a.id);for(const item of r.imageDelivery||[]) {if(item.originalAssetId)used.add(item.originalAssetId);if(item.finalAssetId)used.add(item.finalAssetId);}}const removable=all('asset').filter(a=>!used.has(a.id));if(path==='/api/cleanup'){for(const a of removable){delete state.asset[a.id];memoryAssets.delete(a.id);URL.revokeObjectURL(urls.get(a.id));urls.delete(a.id);if(assetFolder)await assetFolder.removeEntry(a.id).catch(()=>{});if(thumbnailFolder)await thumbnailFolder.removeEntry(a.id+'.webp').catch(()=>{})}await save()}return response({assetCount:removable.length,bytes:removable.reduce((n,a)=>n+a.size,0),removedAssetCount:path==='/api/cleanup'?removable.length:0})}
     return failure('本地接口不存在',404);
   }
   window.fetch=(url,options)=>String(url).startsWith('/api/')?route(url,options).catch(e=>failure(escapeKey(e))):nativeFetch(url,options);
@@ -20321,6 +20343,33 @@ function H8(e12) {
     return;
   }
 }
+function lcGenerationDetails({run, assets = {}}) {
+  const snap=run.snapshot||{}, refs=snap.attachments||[], prompt=snap.transmittedPrompt??snap.currentPrompt??snap.request?.prompt;
+  return b.jsxs("section",{className:"generation-details",children:[
+    b.jsx("h2",{children:"提示词"}),b.jsx("p",{className:"generation-prompt",children:prompt||"这条历史记录未保存提示词。"}),
+    b.jsx("h2",{children:"参考图片"}),refs.length?b.jsx("div",{className:"generation-references",children:refs.map(ref=>{
+      const id=ref.assetId||ref.id, name=ref.name||assets[id]?.name||"未命名图片";
+      return b.jsxs("figure",{children:[b.jsx("a",{href:window.__lcAssetUrl(id),target:"_blank",rel:"noopener noreferrer",title:"查看参考原图",children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:name})}),b.jsx("figcaption",{children:name})]},id);
+    })}):b.jsx("p",{className:"small muted",children:"本次未使用参考图。"})
+  ]});
+}
+function lcImageHistory({workspace, runs, assets, onRead}) {
+  const [open,setOpen]=L.useState(false),[limit,setLimit]=L.useState(20);
+  const close=L.useCallback(()=>setOpen(false),[]);
+  const history=Object.values(runs).filter(run=>run.workspaceId===workspace?.id&&run.mode==='image').sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+  return b.jsxs(b.Fragment,{children:[b.jsxs("button",{className:"workspace-row",disabled:!workspace,onClick:()=>{setLimit(20);setOpen(true)},children:[b.jsx(vc,{size:17}),b.jsx("span",{children:"生图历史"})]}),open&&b.jsx(hc,{title:"生图历史",wide:true,onClose:close,children:b.jsxs("div",{className:"image-history",children:[
+    b.jsx("p",{className:"small muted",children:`${workspace?.name||"当前画布"} · ${history.length} 条记录。删除画布上的图片节点后，记录和图片仍会保留。`}),
+    !history.length&&b.jsx("p",{className:"history-empty",children:"这个画布还没有生图记录。"}),
+    history.slice(0,limit).map(run=>b.jsxs("article",{className:"image-history-entry",children:[
+      b.jsxs("header",{children:[b.jsx("strong",{children:run.model}),b.jsx("time",{dateTime:run.createdAt,children:new Date(run.createdAt).toLocaleString()}),b.jsx("span",{children:Tb[run.status]||run.status})]}),
+      b.jsx("p",{className:"small muted",children:run.providerName}),
+      b.jsx("div",{className:"history-results",children:(run.assetIds||[]).map(id=>b.jsxs("button",{className:"history-result",onClick:()=>{setOpen(false);onRead(run.id)},children:[b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:assets[id]?.name||"生成图片"}),b.jsx("span",{children:assets[id]?.name||"生成图片"})]},id))}),
+      b.jsx(lcGenerationDetails,{run,assets}),run.error&&b.jsx("p",{className:"run-error",children:run.error}),
+      b.jsx("button",{className:"btn compact",onClick:()=>{setOpen(false);onRead(run.id)},children:"展开图片结果"})
+    ]},run.id)),history.length>limit&&b.jsx("button",{className:"btn",onClick:()=>setLimit(n=>n+20),children:"加载更多记录"})
+  ]})})]});
+}
+
 function rE({ runId: e12, onClose: i, standalone: l = false }) {
   const [a, o] = L.useState(null), [s, c] = L.useState(""), [d, m] = L.useState(true), [g, y] = L.useState(""), [p, x] = L.useState(false), [v, S] = L.useState(() => {
     try {
@@ -20532,9 +20581,9 @@ function rE({ runId: e12, onClose: i, standalone: l = false }) {
   }, children: b.jsx(Yl, { size: 17 }) })] }), g && b.jsx("p", { className: "lc-reader-banner", role: "status", children: g }), b.jsx("div", { className: "lc-reader-scroll", ref: V, tabIndex: 0, "aria-label": "结果正文", onScroll: () => {
     const ce = V.current;
     ce && (he.current = ce.scrollHeight - ce.clientHeight - ce.scrollTop < 48, he.current && re(false), clearTimeout(me.current), me.current = setTimeout(Ee, 500));
-  }, children: b.jsxs("article", { className: "lc-reader-article", ref: $, style: { fontSize: v }, children: [d && b.jsx("p", { className: "lc-reader-empty", role: "status", children: "正在读取结果…" }), s && b.jsxs("div", { className: "lc-reader-empty", role: "alert", children: [b.jsx("p", { children: s }), b.jsx("button", { className: "lc-reader-text-button", onClick: () => D((ce) => ce + 1), children: "重新读取" })] }), (a == null ? void 0 : a.error) && b.jsxs("div", { className: "lc-reader-error", role: "alert", children: [b.jsx("strong", { children: Tb[a.status] }), b.jsx("p", { children: a.error }), b.jsx("p", { children: "已返回的内容保留在下方。" })] }), (a == null ? void 0 : a.text) && b.jsx(JS, { text: a.text }), a == null ? void 0 : a.assetIds.map((ce, K) => b.jsxs("figure", { className: "lc-reader-image", children: [b.jsx("a", { href: window.__lcAssetUrl(encodeURIComponent(ce)), target: "_blank", rel: "noopener noreferrer", title: "查看原始图片", children: b.jsx(lcAssetImage, { src: window.__lcAssetUrl(encodeURIComponent(ce)), alt: `生成结果 ${K + 1}`, original:true, onLoad: () => {
+  }, children: b.jsxs("article", { className: "lc-reader-article", ref: $, style: { fontSize: v }, children: [d && b.jsx("p", { className: "lc-reader-empty", role: "status", children: "正在读取结果…" }), s && b.jsxs("div", { className: "lc-reader-empty", role: "alert", children: [b.jsx("p", { children: s }), b.jsx("button", { className: "lc-reader-text-button", onClick: () => D((ce) => ce + 1), children: "重新读取" })] }), (a == null ? void 0 : a.error) && b.jsxs("div", { className: "lc-reader-error", role: "alert", children: [b.jsx("strong", { children: Tb[a.status] }), b.jsx("p", { children: a.error }), b.jsx("p", { children: "已返回的内容保留在下方。" })] }), a?.mode === "image" && b.jsx(lcGenerationDetails,{run:a}), (a == null ? void 0 : a.text) && b.jsx(JS, { text: a.text }), a == null ? void 0 : a.assetIds.map((ce, K) => b.jsxs("figure", { className: "lc-reader-image", children: [b.jsx("a", { href: window.__lcAssetUrl(encodeURIComponent(ce)), target: "_blank", rel: "noopener noreferrer", title: "查看原始图片", children: b.jsx(lcAssetImage, { src: window.__lcAssetUrl(encodeURIComponent(ce)), alt: `生成结果 ${K + 1}`, original:true, onLoad: () => {
     te.current && qe(te.current);
-  } }) }), b.jsxs("figcaption", { children: [b.jsxs("span", { children: ["图片 ", K + 1] }), b.jsxs("a", { href: window.__lcAssetUrl(encodeURIComponent(ce)), download: true, children: [b.jsx(Xa, { size: 15 }), "下载原图"] })] })] }, ce)), a && !a.text && !a.assetIds.length && !a.error && b.jsx("p", { className: "lc-reader-empty", children: Nm(a) ? "这条结果没有返回正文或图片。" : "等待 API 返回内容…" })] }) }), ie && b.jsxs("button", { className: "lc-reader-latest", onClick: () => {
+  } }) }), b.jsxs("figcaption", { children: [b.jsxs("span", { children: [a.imageDelivery?.[K]?.finalName || `图片 ${K + 1}`] }), b.jsxs("a", { href: window.__lcAssetUrl(encodeURIComponent(ce)), download: true, children: [b.jsx(Xa, { size: 15 }), "下载原图"] })] })] }, ce)), a && !a.text && !a.assetIds.length && !a.error && b.jsx("p", { className: "lc-reader-empty", children: Nm(a) ? "这条结果没有返回正文或图片。" : "等待 API 返回内容…" })] }) }), ie && b.jsxs("button", { className: "lc-reader-latest", onClick: () => {
     V.current && (V.current.scrollTop = V.current.scrollHeight), he.current = true, re(false);
   }, children: [b.jsx(mM, { size: 16 }), "有新内容，回到最新"] }), b.jsxs("footer", { className: "lc-reader-footer", children: [b.jsx("span", { children: G || U || "阅读、复制和下载不会再次调用模型" }), (a == null ? void 0 : a.cost) != null && b.jsxs("span", { children: [a.currency || "", " ", a.cost.toFixed(6)] })] }), b.jsx("span", { className: "lc-sr-only", role: "status", children: G })] }) });
   return l ? _t : Jc.createPortal(_t, document.body);
@@ -21195,7 +21244,7 @@ function V8() {
     var ue;
     return [Z.data.label, Z.data.prompt, Z.data.runId ? (ue = c[Z.data.runId]) == null ? void 0 : ue.text : ""].some((ge) => ge == null ? void 0 : ge.toLowerCase().includes(N.toLowerCase()));
   }).slice(0, 12) : [], _n = l ? _t.current[l] : void 0, qn = L.useCallback(() => X(null), []), ul = L.useCallback(() => re(null), []), Li = L.useCallback(() => J(false), []), Zl = L.useCallback(() => V(null), []), Hi = Object.values(c).filter((Z) => Z.workspaceId === l).filter(_m);
-  return y ? x ? b.jsxs("div", { className: "app-loading", children: [b.jsx(jp, { size: 28 }), b.jsx("h2", { children: "未连接到本地服务" }), b.jsx("p", { children: x }), b.jsx("button", { className: "btn primary", onClick: () => location.reload(), children: "重新连接" })] }) : b.jsxs("div", { inert: he || void 0, className: `app-shell ${A ? "" : "sidebar-collapsed"}`, children: [A && b.jsxs("aside", { className: "sidebar", children: [b.jsxs("div", { className: "brand", children: [b.jsx("div", { className: "brand-mark", children: b.jsx(wr, { size: 19 }) }), b.jsx("span", { children: "轻画布" }), b.jsx("button", { className: "icon-btn", "aria-label": "收起侧栏", onClick: () => k(false), children: b.jsx(TM, { size: 17 }) })] }), b.jsxs("button", { className: "new-workspace btn", onClick: Nn, children: [b.jsx(Vl, { size: 16 }), "新建画布"] }), b.jsxs("label", { className: "sidebar-search", children: [b.jsx(Oc, { size: 15 }), b.jsx("input", { "aria-label": "搜索画布与节点", placeholder: "搜索画布与节点", value: N, onChange: (Z) => C(Z.target.value) })] }), b.jsxs("div", { className: "sidebar-section-title", children: ["我的画布 ", b.jsx("span", { children: e12.length })] }), b.jsxs("nav", { className: "workspace-list", children: [Ri.map((Z) => b.jsxs("button", { className: `workspace-row ${Z.id === l ? "active" : ""}`, onClick: () => nn(Z.id), children: [b.jsx(bM, { size: 16 }), b.jsx("span", { children: Z.name }), Z.id === l && b.jsx(Wu, { size: 13 })] }, Z.id)), !Ri.length && b.jsx("p", { className: "small muted", children: "没有匹配的画布" })] }), !!(Jn != null && Jn.length) && b.jsxs("div", { className: "node-search-results", children: [b.jsx("div", { className: "sidebar-section-title", children: "当前画布内" }), Jn.map((Z) => b.jsxs("button", { className: "workspace-row", onClick: () => Ae.fitView({ nodes: [{ id: Z.id }], maxZoom: 1, padding: 0.5, duration: 200 }), children: [b.jsx(Oc, { size: 13 }), b.jsx("span", { children: Z.data.prompt.slice(0, 24) || Z.data.label })] }, Z.id))] }), b.jsxs("div", { className: "sidebar-bottom", children: [b.jsxs("button", { className: "workspace-row", onClick: () => {
+  return y ? x ? b.jsxs("div", { className: "app-loading", children: [b.jsx(jp, { size: 28 }), b.jsx("h2", { children: "未连接到本地服务" }), b.jsx("p", { children: x }), b.jsx("button", { className: "btn primary", onClick: () => location.reload(), children: "重新连接" })] }) : b.jsxs("div", { inert: he || void 0, className: `app-shell ${A ? "" : "sidebar-collapsed"}`, children: [A && b.jsxs("aside", { className: "sidebar", children: [b.jsxs("div", { className: "brand", children: [b.jsx("div", { className: "brand-mark", children: b.jsx(wr, { size: 19 }) }), b.jsx("span", { children: "轻画布" }), b.jsx("button", { className: "icon-btn", "aria-label": "收起侧栏", onClick: () => k(false), children: b.jsx(TM, { size: 17 }) })] }), b.jsxs("button", { className: "new-workspace btn", onClick: Nn, children: [b.jsx(Vl, { size: 16 }), "新建画布"] }), b.jsxs("label", { className: "sidebar-search", children: [b.jsx(Oc, { size: 15 }), b.jsx("input", { "aria-label": "搜索画布与节点", placeholder: "搜索画布与节点", value: N, onChange: (Z) => C(Z.target.value) })] }), b.jsxs("div", { className: "sidebar-section-title", children: ["我的画布 ", b.jsx("span", { children: e12.length })] }), b.jsxs("nav", { className: "workspace-list", children: [Ri.map((Z) => b.jsxs("button", { className: `workspace-row ${Z.id === l ? "active" : ""}`, onClick: () => nn(Z.id), children: [b.jsx(bM, { size: 16 }), b.jsx("span", { children: Z.name }), Z.id === l && b.jsx(Wu, { size: 13 })] }, Z.id)), !Ri.length && b.jsx("p", { className: "small muted", children: "没有匹配的画布" })] }), !!(Jn != null && Jn.length) && b.jsxs("div", { className: "node-search-results", children: [b.jsx("div", { className: "sidebar-section-title", children: "当前画布内" }), Jn.map((Z) => b.jsxs("button", { className: "workspace-row", onClick: () => Ae.fitView({ nodes: [{ id: Z.id }], maxZoom: 1, padding: 0.5, duration: 200 }), children: [b.jsx(Oc, { size: 13 }), b.jsx("span", { children: Z.data.prompt.slice(0, 24) || Z.data.label })] }, Z.id))] }), b.jsxs("div", { className: "sidebar-bottom", children: [b.jsx(lcImageHistory,{workspace:Ee,runs:c,assets:m,onRead:B}), b.jsxs("button", { className: "workspace-row", onClick: () => {
     Ke().then(() => Y(true)).catch(() => {
     });
   }, children: [b.jsx(Xm, { size: 17 }), b.jsx("span", { children: "服务商与设置" })] }), b.jsxs("button", { className: "workspace-row", onClick: () => J(true), children: [b.jsx(jv, { size: 17 }), b.jsx("span", { children: "快捷键" })] }), b.jsxs("div", { className: "local-note", children: [b.jsx(SM, { size: 13 }), b.jsx("span", { children: "保存在本机 · 可完整迁移" })] })] })] }), b.jsxs("main", { className: "workspace-main", children: [b.jsxs("header", { className: "topbar", children: [b.jsxs("div", { className: "workspace-heading", children: [!A && b.jsx("button", { className: "icon-btn", "aria-label": "展开侧栏", onClick: () => k(true), children: b.jsx(AM, { size: 18 }) }), b.jsx("span", { className: "breadcrumb", children: "我的画布" }), b.jsx(Wu, { className: "breadcrumb-arrow", size: 14 }), b.jsx("input", { className: "workspace-name", "aria-label": "画布名称", value: (Ee == null ? void 0 : Ee.name) || "", onChange: (Z) => Ye((ue) => ({ ...ue, name: Z.target.value })) }), b.jsxs("span", { className: `save-indicator ${S === "保存失败" ? "failed" : ""}`, children: [S === "已保存" && b.jsx(Ym, { size: 12 }), " ", S] })] }), b.jsxs("div", { className: "topbar-actions", children: [S === "保存失败" && b.jsx("button", { className: "btn compact", onClick: () => {
