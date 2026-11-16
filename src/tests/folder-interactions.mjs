@@ -22,6 +22,7 @@ const field=page.getByRole('textbox',{name:'提示词',exact:true}).first();
 await field.click();await field.pressSequentially('Testing persistence',{delay:60});await page.keyboard.insertText(' 持久保存');
 await page.waitForTimeout(1500);
 assert.equal(await page.evaluate(async()=>{const s=JSON.parse(await window.__testFiles.get('canvas.json').text());return Object.values(s.workspace).at(-1).nodes.find(n=>n.data.kind==='input').data.prompt;}),'Testing persistence 持久保存');
+await page.mouse.move(1100,150);
 await field.evaluate(async element=>{
  const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
  const dt=new DataTransfer();dt.items.add(new File([blob],'saved.png',{type:'image/png'}));

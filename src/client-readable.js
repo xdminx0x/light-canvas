@@ -20416,7 +20416,7 @@ function lcSnapGuides({guides,viewport}) {
   return b.jsx("svg",{className:"canvas-snap-guides","aria-hidden":true,children:guides.map((g,i)=>b.jsx("line",g.axis==='x'?{x1:g.value*zoom+x,x2:g.value*zoom+x,y1:g.start*zoom+y,y2:g.end*zoom+y}:{y1:g.value*zoom+y,y2:g.value*zoom+y,x1:g.start*zoom+x,x2:g.end*zoom+x},i))});
 }
 function V8() {
-  const [snapGuides,setSnapGuides]=L.useState([]),snapBypass=L.useRef(false);
+  const [snapGuides,setSnapGuides]=L.useState([]),snapBypass=L.useRef(false),canvasPointer=L.useRef(null);
   L.useEffect(()=>{const key=event=>{snapBypass.current=event.altKey;if(event.altKey)setSnapGuides([]);},blur=()=>{snapBypass.current=false;setSnapGuides([]);};window.addEventListener('keydown',key);window.addEventListener('keyup',key);window.addEventListener('blur',blur);return()=>{window.removeEventListener('keydown',key);window.removeEventListener('keyup',key);window.removeEventListener('blur',blur);};},[]);
 
   const [e12, i] = L.useState([]), [l, a] = L.useState(""), [o, s] = L.useState([]), [c, d] = L.useState({}), [m, g] = L.useState({}), [y, p] = L.useState(false), [x, v] = L.useState(""), [S, E] = L.useState("已保存"), [N, C] = L.useState(""), [A, k] = L.useState(() => window.innerWidth > 760), [T, Y] = L.useState(false), [M, B] = L.useState(null), [G, J] = L.useState(false), [U, X] = L.useState(null), [ie, re] = L.useState(null), [j, D] = L.useState(null), [H, V] = L.useState(null), [$, F] = L.useState(""), [_, se] = L.useState(() => localStorage.getItem("lc-scroll-mode") === "zoom" ? "zoom" : "pan"), [he, R] = L.useState(false), O = L.useRef(false), te = L.useRef(/* @__PURE__ */ new Map()), [pe, me] = L.useState({}), ne = L.useRef({}), xe = L.useRef({}), Se = L.useRef(/* @__PURE__ */ new Set()), fe = L.useRef(null), [Ce, Te] = L.useState(0), Ae = Eo(), Ee = e12.find((Z) => Z.id === l), qe = L.useRef(e12);
@@ -20529,7 +20529,12 @@ function V8() {
     var ue;
     const Z = (ue = de.current) == null ? void 0 : ue.getBoundingClientRect();
     return Ae.screenToFlowPosition({ x: ((Z == null ? void 0 : Z.left) || 0) + ((Z == null ? void 0 : Z.width) || 1e3) / 2 - 175, y: ((Z == null ? void 0 : Z.top) || 0) + ((Z == null ? void 0 : Z.height) || 700) / 2 - 160 });
-  }, [Ae]), bt = L.useCallback((Z = "chat", ue, ge = false, aligned = false) => {
+  }, [Ae]), pastePlacement=L.useCallback(()=>{
+    const point=canvasPointer.current;
+    return point?.workspaceId===Le.current?.id?{position:Ae.screenToFlowPosition({x:point.x,y:point.y},{snapToGrid:false}),atPointer:true}:{position:Oi(),atPointer:false};
+  },[Ae,Oi]), rememberPointer=L.useCallback(event=>{
+    if(event.target.closest?.('.react-flow')&&!event.target.closest('.react-flow__panel'))canvasPointer.current={x:event.clientX,y:event.clientY,workspaceId:Le.current?.id};
+  },[]), bt = L.useCallback((Z = "chat", ue, ge = false, aligned = false) => {
     const _e = Le.current;
     if (!_e)
       return;
@@ -20674,19 +20679,21 @@ function V8() {
     }
   }, [be, Ye, Ve]), Ql = L.useCallback((Z) => {
     navigator.clipboard.writeText(Z).then(() => be("已复制")).catch(() => be("复制失败，请选中文字后复制。"));
-  }, [be]), In = L.useCallback((Z,targetId) => {
+  }, [be]), In = L.useCallback((Z,targetId,placement) => {
     const ue = Le.current, ge = Z || K.current;
     if (!ue || !(ge != null && ge.nodes.length))
       return;
+    const imagePaste=ge.nodes.some(node=>node.data.kind==='image'),anchor=imagePaste?(placement||pastePlacement()):null;
+    const offset=anchor?{x:anchor.position.x-Math.min(...ge.nodes.map(node=>node.position.x)),y:anchor.position.y-Math.min(...ge.nodes.map(node=>node.position.y))}:{x:70,y:70};
     const _e = new Map(ge.nodes.map((He) => [He.id, Ta()])), ze = ge.nodes.map((He) => {
       var Re, Ue;
-      return { ...structuredClone(He), id: _e.get(He.id), selected: true, position: { x: He.position.x + 70, y: He.position.y + 70 }, data: { ...structuredClone(He.data), ...He.data.runId ? { kind: He.data.kind==='image'?'image':'note', resultIndex:undefined, prompt: ((Re = pt.current[He.data.runId]) == null ? void 0 : Re.text) || "", assetIds: window.LightCanvasImages.idsOf(He,pt.current), runId: void 0, label: He.data.kind==='image'?'参考图片':'结果副本' } : {} } };
+      return { ...structuredClone(He), id: _e.get(He.id), selected: true, position: { x: He.position.x + offset.x, y: He.position.y + offset.y }, data: { ...structuredClone(He.data), ...He.data.runId ? { kind: He.data.kind==='image'?'image':'note', resultIndex:undefined, prompt: ((Re = pt.current[He.data.runId]) == null ? void 0 : Re.text) || "", assetIds: window.LightCanvasImages.idsOf(He,pt.current), runId: void 0, label: He.data.kind==='image'?'参考图片':'结果副本' } : {} } };
     }), je = ge.edges.filter((He) => _e.has(He.source) && _e.has(He.target)).map((He) => ({ ...structuredClone(He), id: Ta(), source: _e.get(He.source), target: _e.get(He.target), selected: false }));
     if(ze.some(node=>node.data.assetIds?.some(id=>!window.__lcBackend.getState().asset[id]))){be('原图不存在，请在原画布复制或导入原文件。');return}
     if(targetId)for(const node of ze)if(node.data.kind==='image')je.push(Em(node.id,targetId,'reference'));
     Ye((He) => ({ ...He, nodes: [...He.nodes.map((Re) => ({ ...Re, selected: false })), ...ze], edges: [...He.edges, ...je] }), true);
-    if(ze.some(node=>node.data.kind==='image'))setTimeout(()=>Ae.fitView({nodes:ze.map(node=>({id:node.id})),maxZoom:1,padding:0.3,duration:180}),40);
-  }, [Ye,m,Ae,be]), nn = L.useCallback(async (Z) => {
+    if(imagePaste&&!anchor.atPointer)setTimeout(()=>Ae.fitView({nodes:ze.map(node=>({id:node.id})),maxZoom:1,padding:0.3,duration:180}),40);
+  }, [Ye,m,Ae,be,pastePlacement]), nn = L.useCallback(async (Z) => {
     var ue;
     if (!O.current)
       try {
@@ -20715,11 +20722,11 @@ function V8() {
     be(selected.length>1?"已自动对齐所选节点，可撤销":"已自动对齐全部节点，可撤销");
   },[Ye,Ae,be]);
 
-  const pasteImages = L.useCallback(async (files,targetId=null) => {
+  const pasteImages = L.useCallback(async (files,targetId=null,placement=null) => {
     const initial=Le.current;
     if(!initial||O.current) return;
     const workspaceId=initial.id;
-    const position=Oi();
+    const anchor=placement||pastePlacement(),position=anchor.position;
     const uploadTag="canvas:"+Ta();te.current.set(uploadTag,1);me(Object.fromEntries(te.current));
     try {
       const supported=files.filter(file=>["image/png","image/jpeg","image/webp"].includes(file.type));
@@ -20732,10 +20739,11 @@ function V8() {
       const workspace=qe.current.find(item=>item.id===workspaceId);
       if(!workspace) return;
       const target=workspace.nodes.find(node=>node.id===targetId&&node.data.kind==="input");
-      const base=target?{x:target.position.x-430,y:target.position.y}:position;
+      const base=target&&!anchor.atPointer?{x:target.position.x-430,y:target.position.y}:position;
       const nodes=[];
       for(const [index,asset] of assets.entries()) {
-        const node=zb("image",km({...workspace,nodes:[...workspace.nodes,...nodes]},{x:base.x+index*390,y:base.y}),vt.current);
+        const point={x:base.x+index*390,y:base.y};
+        const node=zb("image",anchor.atPointer?point:km({...workspace,nodes:[...workspace.nodes,...nodes]},point),vt.current);
         node.dragHandle=".node-drag-handle";
         node.data={...node.data,kind:"image",label:assets.length>1?`参考图片 ${index+1}`:"参考图片",assetIds:[asset.id],prompt:""};
         node.selected=true;
@@ -20744,7 +20752,7 @@ function V8() {
       const append=current=>({...current,nodes:[...current.nodes.map(node=>({...node,selected:false})),...nodes],edges:[...current.edges,...(target?nodes.map(node=>Em(node.id,target.id,"reference")):[])]});
       if(Le.current?.id===workspaceId) {
         Ye(append,true);
-        setTimeout(()=>Ae.fitView({nodes:[...nodes.map(node=>({id:node.id})),...(target?[{id:target.id}]:[])],maxZoom:1,padding:0.3,duration:180}),40);
+        if(!anchor.atPointer)setTimeout(()=>Ae.fitView({nodes:[...nodes.map(node=>({id:node.id})),...(target?[{id:target.id}]:[])],maxZoom:1,padding:0.3,duration:180}),40);
       } else {
         const next=append(workspace);
         xe.current[workspaceId]=(xe.current[workspaceId]||0)+1;
@@ -20754,7 +20762,7 @@ function V8() {
       }
       be(target?"已粘贴原图并连接到提示词":"已粘贴为图片节点，可连接到提示词作为参考图");
     } catch(error) { be(error.message); } finally {te.current.delete(uploadTag);me(Object.fromEntries(te.current));}
-  },[Oi,Ye,Ve,Ae,be]);
+  },[pastePlacement,Ye,Ve,Ae,be]);
 
   L.useEffect(() => {
     const Z = (ue) => {
@@ -20790,21 +20798,22 @@ function V8() {
     return window.addEventListener("keydown", Z), () => window.removeEventListener("keydown", Z);
   }, [Pt, Ye, It, be, In, Ft, bt, dn, Ae]);
 
-  const pasteClipboard=L.useCallback(async()=>{
+  const pasteClipboard=L.useCallback(async(placement=null)=>{
     if(!Le.current||Pt||O.current)return;
+    const anchor=placement?.position?placement:pastePlacement();
     try {
       if(!navigator.clipboard?.read)throw new Error('浏览器无法读取剪贴板，请使用 Ctrl / Command + V，或导入图片。');
       const items=await navigator.clipboard.read(),files=[];
-      for(const item of items)if(item.types.includes('text/plain')){try{const copied=JSON.parse(await (await item.getType('text/plain')).text());if(copied.format==='light-canvas-nodes'&&copied.nodes?.every(node=>window.LightCanvasImages.idsOf(node,pt.current).every(id=>window.__lcBackend.getState().asset[id]))){In(copied);return}}catch{}}
+      for(const item of items)if(item.types.includes('text/plain')){try{const copied=JSON.parse(await (await item.getType('text/plain')).text());if(copied.format==='light-canvas-nodes'&&copied.nodes?.every(node=>window.LightCanvasImages.idsOf(node,pt.current).every(id=>window.__lcBackend.getState().asset[id]))){In(copied,null,anchor);return}}catch{}}
 
       for(const [index,item] of items.entries()){
         const type=['image/png','image/jpeg','image/webp'].find(type=>item.types.includes(type));
         if(type){const blob=await item.getType(type);files.push(new File([blob],`clipboard-${index+1}.${type.split('/')[1]}`,{type}));}
       }
       if(!files.length)throw new Error('剪贴板没有可读取的图片。复制图片本身，或使用“导入图片”一次选择多张。');
-      await pasteImages(files);
+      await pasteImages(files,null,anchor);
     }catch(error){be(error.name==='NotAllowedError'?'请允许浏览器读取剪贴板，或使用“导入图片”。':error.message);}
-  },[Pt,pasteImages,In,be]);
+  },[Pt,pasteImages,In,be,pastePlacement]);
   const mentionImage=L.useCallback((nodeId,assetId,prompt)=>{
     Ye(workspace=>{
       const image=window.LightCanvasImages.candidates(workspace,nodeId,pt.current,m).find(item=>item.assetId===assetId);
@@ -20841,12 +20850,12 @@ function V8() {
     const fallback=event=>{
       if(!(event.ctrlKey||event.metaKey)||event.key.toLowerCase()!=='v'||event.repeat||blocked(event)||editable(event.target))return;
       pasteSink.current?.focus({preventScroll:true});
-      const serial=pasteSerial.current;clearTimeout(pasteFallback.current);
-      pasteFallback.current=setTimeout(()=>{if(pasteSerial.current===serial)pasteClipboard();},180);
+      const serial=pasteSerial.current,placement=pastePlacement();clearTimeout(pasteFallback.current);
+      pasteFallback.current=setTimeout(()=>{if(pasteSerial.current===serial)pasteClipboard(placement);},180);
     };
     window.addEventListener('paste',paste,true);window.addEventListener('keydown',fallback,true);
     return()=>{window.removeEventListener('paste',paste,true);window.removeEventListener('keydown',fallback,true);clearTimeout(pasteFallback.current);};
-  },[Pt,pasteImages,pasteClipboard,In,be,m]);
+  },[Pt,pasteImages,pasteClipboard,In,be,m,pastePlacement]);
 
   const lcNodeIndex = L.useMemo(()=>new Map((Ee?.nodes||[]).map(n=>[n.id,n])),[Ee?.nodes]);
   const Za = L.useMemo(() => ({ pasteImages, mentionImage, removeImage, providers: o, runs: c, assets: m, workspace: Ee, reference: Dt, unlink: edgeId => Ye(w => ({...w, edges:w.edges.filter(edge => edge.id !== edgeId)}), true), uploading: pe, update: zt, send: gi, stop: Hr, read: (runId,assetId)=>B(assetId?{runId,assetId}:runId), follow: dn, remove: Ft, inspect: rl, copy: Ql, connect: V, upload: Br, settings: () => {
@@ -20876,7 +20885,7 @@ function V8() {
   }, children: [b.jsx(Xa, { size: 15 }), b.jsx("span", { children: "导出结构" })] }), b.jsx("button", { className: "icon-btn", "aria-label": "打开设置", onClick: () => {
     Ke().then(() => Y(true)).catch(() => {
     });
-  }, children: b.jsx(Xm, { size: 18 }) })] })] }), b.jsxs("div", { className: "canvas-layout", children: [b.jsxs("div", { className: "canvas-container", ref: de, tabIndex: 0, "aria-label": "节点画布", onDoubleClick: (Z) => {
+  }, children: b.jsx(Xm, { size: 18 }) })] })] }), b.jsxs("div", { className: "canvas-layout", children: [b.jsxs("div", { className: "canvas-container", ref: de, tabIndex: 0, "aria-label": "节点画布", onPointerMoveCapture:rememberPointer, onPointerDownCapture:rememberPointer, onDoubleClick: (Z) => {
     Z.target.classList.contains("react-flow__pane") && bt("chat", Ae.screenToFlowPosition({ x: Z.clientX, y: Z.clientY }));
   }, onPointerDown: (Z) => {
     var ue;

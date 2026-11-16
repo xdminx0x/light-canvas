@@ -40,6 +40,7 @@ const pasteImage=async target=>page.evaluate(async target=>{
   const event=new ClipboardEvent('paste',{clipboardData:clipboard,bubbles:true,cancelable:true});element.dispatchEvent(event);
   return {handled:event.defaultPrevented,bytes:blob.size};
 },target);
+await page.mouse.move(1100,150);
 assert.equal((await pasteImage('canvas')).handled,true);
 await page.getByTestId('node-reference-image').waitFor();
 await page.waitForTimeout(900);
@@ -55,6 +56,7 @@ await page.locator(`.react-flow__node[data-id="${input.id}"] .react-flow__handle
 await page.waitForTimeout(850);
 current=await page.evaluate(id=>window.__lcBackend.getState().workspace[id],workspace.id);
 assert.equal(current.edges.length,1);assert.equal(current.edges[0].data.kind,'reference');
+await page.mouse.move(1100,780);
 assert.equal((await pasteImage('field')).handled,true);
 await page.waitForTimeout(1000);
 current=await page.evaluate(id=>window.__lcBackend.getState().workspace[id],workspace.id);
