@@ -197,3 +197,5 @@
 
 /* Keep horizontal connections visible when an input card grows below the viewport. */
 .react-flow .canvas-handle.react-flow__handle-left,.react-flow .canvas-handle.react-flow__handle-right{top:25px}
+
+.image-cost-total{font-weight:600}.image-cost-details{margin-top:20px;border-top:1px solid #e5e5e5;padding-top:14px;font-size:12px}.image-cost-details summary{cursor:pointer;width:fit-content;font-weight:600}.image-cost-details summary:focus-visible{outline:2px solid #555;outline-offset:4px}.image-cost-content{padding-top:10px}.image-cost-content>p{margin:8px 0;line-height:1.7}.image-cost-lines{list-style:none;padding:0;margin:14px 0;font-variant-numeric:tabular-nums}.image-cost-lines li{display:flex;justify-content:space-between;gap:20px;padding:9px 0;border-bottom:1px solid #eee}.image-cost-lines li>div{display:grid;gap:3px;min-width:0}.image-cost-lines small{color:#666;font-size:11px;overflow-wrap:anywhere}.image-cost-lines li>span{white-space:nowrap}.image-cost-content>a{color:inherit;text-underline-offset:3px}

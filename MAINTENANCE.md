@@ -1,4 +1,4 @@
-# 轻画布开发交接 · 2.2.8
+# 轻画布开发交接 · 2.3
 
 详见CHANGELOG.md。运行时双击index.html，选择本机数据文件夹。仓库不包含用户数据；首次使用新建数据文件夹并配置 API。不要改回必须命令启动的服务器。
 
@@ -48,6 +48,8 @@ Python 3 执行 src/rebuild.py；在src 目录 npm test。Node/Playwright/Chrome
 - 保存已选文件夹位置到浏览器仅为便捷功能，不得阻止已经完成数据准备的画布打开。
 
 ## 横向节点布局
+
+- React Flow 使用 selectionMode Partial，框选仅需部分重叠；mouse-controls.mjs 验证正向/反向边角相交、不相交不选中及重载后行为。保留左键框选、中键平移。
 - 新结果与继续输入使用 lc16Right，按源节点实际宽度向右排列，碰撞时向下避让；自动布局复用转置后的分层算法。
 - 不自动改写已有画布位置；手动自动对齐保留未选节点及原有节点字段，支持撤销重做。
 
@@ -56,3 +58,11 @@ Python 3 执行 src/rebuild.py；在src 目录 npm test。Node/Playwright/Chrome
 - 不做本地缩放/补边；返回实际尺寸不符时保留原始字节并记录 warning，结果节点与详情均显示。旧记录不改写。
 - 横向端口固定距顶部 25px；节点显式设置 sourcePosition Right / targetPosition Left，与实际 handle 方向一致。
 - native-sizing.mjs 覆盖比例/尺寸限制、模拟请求参数、生成中/完成后的长节点连线、返回尺寸差异及原始字节一致性。不得用真实密钥调用付费 API 做回归。
+
+## 模型费用
+
+- image-costs.js 是生图计价的共用实现；官方 Standard USD 表标注来源与核价日期。文本输入、图片输入、图片输出分别使用对应单价，禁止统一输入价或用图片数量二次乘算 Token 费用。
+- 发送时将 imagePricing 写入 snapshot，完成时保存 USD cost/costBasis。历史记录在详情中纯计算展示，不改写 data。
+- 未知模型、负数/无效用量、缺失/不一致分类不得冒充完整总价。已知部分仅标注部分费用，非 USD 手动价格不转换。
+- direct Images API 不套用 GPT Image 2/2.5 的 Responses 缓存优惠，不采用 Batch 单价。
+- image-costs.mjs 包含计价单测、模拟接口完成保存、历史展示无改写和桌面/窄屏布局验证，禁止使用真实 API 做费用回归。

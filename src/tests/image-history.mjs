@@ -55,7 +55,7 @@ await page.getByRole('button',{name:'查看图片结果：另一个结果.png',e
 
 assert.equal(await page.locator('.lc-reader .generation-references figcaption').textContent(),'兔子参考.png');
 assert.equal(await page.locator('.generation-prompt').textContent(),'请按照参考图生成一只兔子');
-assert.ok((await page.locator('.image-result-facts').textContent()).includes('440'));assert.ok((await page.locator('.image-result-facts').textContent()).includes('USD 0.1235'));
+assert.ok((await page.locator('.image-result-facts').textContent()).includes('440'));assert.ok((await page.locator('.image-result-facts').textContent()).includes('USD 0.123450'));
 assert.equal(await page.getByRole('button',{name:'复制完整原文',exact:true}).isVisible(),false);
 const stage=await page.locator('.image-result-stage').boundingBox(),context=await page.locator('.image-context-grid').boundingBox();assert.ok(stage.y+stage.height<context.y);
 await page.evaluate(async()=>{await Promise.all([...document.querySelectorAll('.history-result img,.image-result-stage img,.generation-references img')].filter(i=>i.src).map(i=>i.decode().catch(()=>{})));await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))});

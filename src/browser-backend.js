@@ -251,7 +251,7 @@
       if(params.maxOutputTokens)request[isChat&&/^gpt-[5-9]/.test(d.model)?'max_completion_tokens':isChat?'max_tokens':'max_output_tokens']=params.maxOutputTokens;
       if(params.temperature!==undefined)request.temperature=params.temperature;
     }
-    return {messages,request,endpoint,imageReferences,transmittedPrompt,...(plan?{imageDelivery:plan}:{}),providerName:p.name,providerId:p.id,protocol:p.protocol,model:d.model,mode:d.mode,contextCount:Math.max(0,sources.length-1),attachmentCount:ids.size,assetIds:[...ids],attachments:[...ids].map(id=>({...state.asset[id],assetId:id})),currentAssetIds:hasMentions?imageReferences.map(i=>i.assetId):[...(d.assetIds||[])],sourceNodeIds:sources,workspaceId,nodeId,currentPrompt:d.prompt,transport,currency:p.currency||'USD',inputPrice:p.inputPrice??null,outputPrice:p.outputPrice??null,imagePrice:p.imagePrice??null};
+    return {messages,request,endpoint,imageReferences,transmittedPrompt,...(plan?{imageDelivery:plan}:{}),providerName:p.name,providerId:p.id,protocol:p.protocol,model:d.model,mode:d.mode,contextCount:Math.max(0,sources.length-1),attachmentCount:ids.size,assetIds:[...ids],attachments:[...ids].map(id=>({...state.asset[id],assetId:id})),currentAssetIds:hasMentions?imageReferences.map(i=>i.assetId):[...(d.assetIds||[])],sourceNodeIds:sources,workspaceId,nodeId,currentPrompt:d.prompt,transport,currency:p.currency||'USD',...(d.mode==='image'?{imagePricing:window.LightCanvasCosts.pricing(d.model)}:{}),inputPrice:p.inputPrice??null,outputPrice:p.outputPrice??null,imagePrice:p.imagePrice??null};
   }
   async function renderImage(blob,plan,index) {
     const original=await addAsset(blob,`generated-${index+1}-original.png`,blob.type||'image/png');
@@ -263,6 +263,7 @@
 
   function providerPrices(p){const num=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;return{inputPrice:num(p?.inputPrice),outputPrice:num(p?.outputPrice),imagePrice:num(p?.imagePrice)}}
   function estimateRunCost(run,p){
+    if(run.mode==='image'){const quote=window.LightCanvasCosts.quote(run,p);return [quote.cost,quote];}
     const prices=providerPrices(p),usage=run.usage||{};
     const input=usage.input_tokens??usage.prompt_tokens,output=usage.output_tokens??usage.completion_tokens;
     let cost=null,basis=null;
@@ -293,7 +294,7 @@
         }else if(s.protocol==='chat-completions')run.text=data.choices?.[0]?.message?.content||'';
         else run.text=data.output_text||data.output?.flatMap(item=>item.content||[]).filter(x=>x.type==='output_text').map(x=>x.text).join('')||'';
         run.usage=data.usage||null;
-        run.currency=p.currency||'USD';
+        run.currency=s.mode==='image'?'USD':p.currency||'USD';
         const[estimate,basis]=estimateRunCost(run,p);run.cost=estimate;run.costBasis=basis;
       }
       if(run.status!=='cancelled')run.status='completed';emitRun(run);
