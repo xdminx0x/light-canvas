@@ -29,12 +29,23 @@ await page.getByRole('button',{name:'查看图片结果：另一个结果.png',e
 await page.locator('.image-result-stage img').evaluate(img=>new Promise(resolve=>{if(img.complete&&img.naturalWidth)resolve();else img.onload=resolve}));
 assert.equal(await page.locator('.image-result-caption>span').textContent(),'另一个结果.png');
 const popupPromise=page.waitForEvent('popup');
-await page.getByRole('link',{name:'在新窗口按原尺寸查看：另一个结果.png',exact:true}).click();
+await page.getByRole('link',{name:'在新窗口查看图片：另一个结果.png',exact:true}).click();
 const popup=await popupPromise;await popup.waitForFunction(()=>document.querySelector('img')?.naturalWidth>0);
 await popup.setViewportSize({width:320,height:240});
+const fitted=await popup.locator('img').evaluate(image=>{const rect=image.getBoundingClientRect();return [rect.width,rect.height]});
+assert.ok(fitted[0]<=320&&fitted[1]<=240&&fitted[1]<800,'large image initially fits the window');
+assert.ok(Math.abs(fitted[0]/fitted[1]-640/800)<0.01,'fit mode preserves aspect ratio');
+await popup.evaluate(async()=>{await document.querySelector('img').decode();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))});
+if(process.env.LC_SCREENSHOT_DIR)await popup.screenshot({path:process.env.LC_SCREENSHOT_DIR+'/popup-fit.png'});
+await popup.locator('img').click();
 const native=await popup.evaluate(async()=>{const image=document.querySelector('img'),rect=image.getBoundingClientRect();return {natural:[image.naturalWidth,image.naturalHeight],rendered:[rect.width,rect.height],bytes:[...new Uint8Array(await fetch(image.src).then(r=>r.arrayBuffer()))],openerIsNull:window.opener===null}});
+await popup.evaluate(async()=>{await document.querySelector('img').decode();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))});
+if(process.env.LC_SCREENSHOT_DIR)await popup.screenshot({path:process.env.LC_SCREENSHOT_DIR+'/popup-native.png'});
 assert.deepEqual(native.natural,[640,800]);assert.deepEqual(native.rendered,native.natural);assert.equal(native.openerIsNull,true);
 assert.deepEqual(native.bytes,await page.evaluate(async()=>[...new Uint8Array(await window.historyFiles.get('assets/result2').arrayBuffer())]));
+await popup.locator('img').click();
+const fitAgain=await popup.locator('img').evaluate(image=>{const rect=image.getBoundingClientRect();return [rect.width,rect.height]});assert.ok(fitAgain[0]<=320&&fitAgain[1]<=240);
+await popup.locator('img').focus();await popup.locator('img').press('Enter');assert.equal(await popup.locator('img').evaluate(image=>image.getBoundingClientRect().height),800);await popup.locator('img').press('Space');assert.ok(await popup.locator('img').evaluate(image=>image.getBoundingClientRect().height)<=240);
 await popup.close();
 await page.locator('.generation-prompt').click();assert.equal(await page.locator('.lc-reader').isVisible(),true,'inside clicks keep the viewer open');
 const heading=await page.locator('.lc-reader-heading').boundingBox();await page.mouse.move(heading.x+10,heading.y+10);await page.mouse.down();await page.mouse.move(8,8,{steps:6});await page.mouse.up();assert.equal(await page.locator('.lc-reader').isVisible(),true,'dragging from inside does not close the viewer');
@@ -63,5 +74,5 @@ await page.reload();await page.getByRole('button',{name:'选择数据文件夹',
 await page.getByRole('button',{name:'生图历史',exact:true}).click();await page.locator('.history-result').first().waitFor();
 assert.equal(await page.locator('.history-result').count(),2);assert.equal(await page.evaluate(()=>window.historyFiles.has('assets/ref')&&window.historyFiles.has('assets/original')),true);
 await page.setViewportSize({width:600,height:850});await page.locator('.history-result img').first().evaluate(img=>new Promise(resolve=>{if(img.complete&&img.naturalWidth)resolve();else img.onload=resolve}));await page.evaluate(async()=>{await Promise.all([...document.querySelectorAll('.history-result img,.image-result-stage img,.generation-references img')].filter(i=>i.src).map(i=>i.decode().catch(()=>{})));await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))});
-if(process.env.LC_SCREENSHOT_DIR)await page.screenshot({path:process.env.LC_SCREENSHOT_DIR+'/history-narrow.png'});assert.deepEqual(errors,[]);console.log('Image gallery and viewer passed, including outside-click closing, inside-click/drag safety, native-size popup dimensions and exact original bytes.');
+if(process.env.LC_SCREENSHOT_DIR)await page.screenshot({path:process.env.LC_SCREENSHOT_DIR+'/history-narrow.png'});assert.deepEqual(errors,[]);console.log('Image gallery and viewer passed, including outside-click closing, inside-click/drag safety, fit/native-size popup toggling, keyboard support and exact original bytes.');
 }finally{await browser.close()}

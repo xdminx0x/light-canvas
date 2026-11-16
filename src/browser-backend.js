@@ -101,11 +101,11 @@
     const anchor=event.target.closest?.('a[href^="#lc-asset="]'); if(!anchor)return;
     event.preventDefault();event.stopPropagation();
     const id=decodeURIComponent(anchor.getAttribute('href').slice(10));
-    const naturalSize=anchor.dataset.originalSize==='true';
-    const popup=anchor.hasAttribute('download')?null:window.open('about:blank','_blank',naturalSize?'popup,width=1100,height=850':undefined);
+    const imageViewer=anchor.dataset.imageViewer==='true';
+    const popup=anchor.hasAttribute('download')?null:window.open('about:blank','_blank',imageViewer?'popup,width=1100,height=850':undefined);
     if(!anchor.hasAttribute('download')&&!popup){alert('浏览器阻止了新窗口，请允许此页面打开弹出窗口。');return;}
     try {
-      if(naturalSize) {
+      if(imageViewer) {
         const blob=await loadAsset(id);
         if(popup.closed)return;
         popup.opener=null;
@@ -113,10 +113,24 @@
         doc.title=state.asset[id]?.name||'原尺寸图片';
         const meta=doc.createElement('meta');meta.name='viewport';meta.content='width=device-width, initial-scale=1';doc.head.append(meta);
         doc.documentElement.style.cssText='background:#202020;color-scheme:dark;';
-        doc.body.style.cssText='margin:0;min-width:max-content;min-height:100vh;';
-        const img=doc.createElement('img');img.alt=doc.title;
-        img.style.cssText='display:block;max-width:none;max-height:none;width:auto;height:auto;margin:0 auto;';
-        img.src=popup.URL.createObjectURL(blob);
+        const img=doc.createElement('img');img.alt=doc.title;img.tabIndex=0;img.setAttribute('role','button');
+        let fit=true;
+        const render=()=>{
+          doc.body.style.cssText=fit?'margin:0;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;':'margin:0;min-width:max-content;min-height:100vh;';
+          img.style.cssText=fit?'display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;cursor:zoom-in;':'display:block;max-width:none;max-height:none;width:auto;height:auto;margin:0 auto;cursor:zoom-out;';
+          img.title=fit?'点击查看原始分辨率':'点击适应窗口';
+          img.setAttribute('aria-label',img.title);img.setAttribute('aria-pressed',String(!fit));
+        };
+        const toggle=(event)=>{
+          if(!img.naturalWidth)return;
+          const rect=img.getBoundingClientRect(),x=event?.clientX??popup.innerWidth/2,y=event?.clientY??popup.innerHeight/2;
+          const point={x:(x-rect.left)/rect.width*img.naturalWidth,y:(y-rect.top)/rect.height*img.naturalHeight};
+          fit=!fit;render();
+          popup.scrollTo(fit?0:Math.max(0,point.x-x),fit?0:Math.max(0,point.y-y));
+        };
+        img.addEventListener('click',toggle);
+        img.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}});
+        render();img.src=popup.URL.createObjectURL(blob);
         doc.body.replaceChildren(img);
         return;
       }
