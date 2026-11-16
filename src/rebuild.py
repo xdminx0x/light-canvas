@@ -31,7 +31,7 @@ css = (source / 'client.css').read_text(encoding='utf-8')
 gate_css = '\n' + (source / 'folder-gate.css').read_text(encoding='utf-8')
 jszip = (source / 'vendor' / 'jszip.min.js').read_text(encoding='utf-8')
 backend = (source / 'browser-backend.js').read_text(encoding='utf-8').replace('__LC_APP_VERSION__', version)
-backend = (source / 'model-order.js').read_text(encoding='utf-8') + '\n' + (source / 'image-references.js').read_text(encoding='utf-8') + '\n' + backend
+backend = (source / 'image-sizing.js').read_text(encoding='utf-8') + '\n' + (source / 'model-order.js').read_text(encoding='utf-8') + '\n' + (source / 'image-references.js').read_text(encoding='utf-8') + '\n' + backend
 html = f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f7f7f7"><title>轻画布 {version} · 本地 HTML</title><style>{css}\n{gate_css}</style></head><body><div id="root"></div><div id="folder-gate"><div id="folder-panel"><h1>打开轻画布</h1><p>选择项目中的“data”文件夹，并允许浏览器查看和编辑。首次使用会自动创建数据；已有文件夹会读取原有画布与 API 配置。以后打开这个页面，选回同一文件夹即可继续。</p><button id="choose-folder">选择数据文件夹</button><button id="import-data">导入备份到文件夹</button><button id="download-data">临时打开</button><input id="import-file" type="file" accept=".zip" hidden><div id="folder-status"></div></div></div><script id="lc-seed" type="application/json">{seed}</script><script>{jszip}</script><script>{backend}</script><script>{client}</script></body></html>'''
 output.write_text(html, encoding='utf-8')
 print(f'Rebuilt {output.name} ({output.stat().st_size:,} bytes)')

@@ -194,3 +194,6 @@
 .image-result-open{display:block;width:100%;height:100%;cursor:zoom-in;border-radius:4px}
 .image-result-open:focus-visible{outline:2px solid #555;outline-offset:4px}
 .image-load-state{pointer-events:none}
+
+/* Keep horizontal connections visible when an input card grows below the viewport. */
+.react-flow .canvas-handle.react-flow__handle-left,.react-flow .canvas-handle.react-flow__handle-right{top:25px}

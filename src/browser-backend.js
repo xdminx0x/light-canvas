@@ -218,21 +218,7 @@
   }
   window.EventSource = LocalEvents;
   const providerEndpoint = (p, suffix) => `${p.baseUrl.replace(/\/+$/,'')}/${suffix}`;
-  function imagePlan(model,params) {
-    const ratio=params.imageAspectRatio||'auto', tier=params.imageResolution||'auto';
-    if (tier==='auto' && ratio==='auto') return null;
-    const edge={ '1k':1024,'2k':2048,'4k':3840 }[tier==='auto'?'1k':tier];
-    const parts=ratio==='auto'?null:ratio.split(':').map(Number);
-    const r=parts?parts[0]/parts[1]:1;
-    const target=parts ? r>=1?{width:edge,height:Math.round(edge/r)}:{width:Math.round(edge*r),height:edge}:null;
-    const requestedSize=target?`${target.width}x${target.height}`:'auto';
-    const flexible=/^gpt-image-2(?:$|[.5-])/.test(model) && !/^gpt-image-2\.6/.test(model);
-    const valid=s=>{const [w,h]=s.split('x').map(Number);return w%16===0&&h%16===0&&Math.max(w,h)<=3840&&Math.max(w,h)/Math.min(w,h)<=3&&w*h>=655360&&w*h<=8294400};
-    let apiSize=requestedSize;
-    if (target && (!flexible||!valid(requestedSize))) apiSize=r===1?'1024x1024':r>1?'1536x1024':'1024x1536';
-    if (!target) apiSize='auto';
-    return {aspectRatio:ratio,resolution:tier==='auto'?'1k':tier,requestedSize,apiSize,method:requestedSize===apiSize?'native':'local-resize',verified:flexible,note:requestedSize===apiSize?'直接使用模型原生尺寸。':'API 返回后本地调整尺寸，保留原图；不会再次调用 API。'};
-  }
+  const imagePlan=(model,params)=>window.LightCanvasSizing.plan(model,params);
   function context(workspaceId,nodeId) {
     const w=state.workspace[workspaceId], n=w?.nodes.find(x=>x.id===nodeId); assert(n?.data?.kind==='input','请选择输入节点');
     const d=n.data,p=state.provider[d.providerId]; assert(p,'请先配置 API 提供商'); assert(d.model,'请选择模型');
@@ -269,21 +255,18 @@
   }
   async function renderImage(blob,plan,index) {
     const original=await addAsset(blob,`generated-${index+1}-original.png`,blob.type||'image/png');
-    const bmp=await createImageBitmap(blob);const edge={'1k':1024,'2k':2048,'4k':3840}[plan?.resolution];let target;
-    if(edge){let ratio=plan.aspectRatio==='auto'?bmp.width/bmp.height:Number(plan.aspectRatio.split(':')[0])/Number(plan.aspectRatio.split(':')[1]);target=ratio>=1?{width:edge,height:Math.round(edge/ratio)}:{width:Math.round(edge*ratio),height:edge}}
-    let final=original,method='native';
-    if(target&&(target.width!==bmp.width||target.height!==bmp.height)){
-      const canvas=document.createElement('canvas');canvas.width=target.width;canvas.height=target.height;const ctx=canvas.getContext('2d');const scale=Math.min(target.width/bmp.width,target.height/bmp.height);const width=Math.round(bmp.width*scale),height=Math.round(bmp.height*scale);ctx.drawImage(bmp,Math.round((target.width-width)/2),Math.round((target.height-height)/2),width,height);
-      const result=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));final=await addAsset(result,`generated-${index+1}-${plan.resolution}-${target.width}x${target.height}.png`,'image/png');method='local-resize';
-    }
-    const detail={originalAssetId:original.id,finalAssetId:final.id,originalName:original.name,originalMime:original.mime,finalName:final.name,finalMime:final.mime,sourceWidth:bmp.width,sourceHeight:bmp.height,width:target?.width||bmp.width,height:target?.height||bmp.height,method,...(plan?{aspectRatio:plan.aspectRatio,resolution:plan.resolution,apiSize:plan.apiSize}:{})};bmp.close();return detail;
+    const bmp=await createImageBitmap(blob);
+    const actualSize=`${bmp.width}x${bmp.height}`;
+    const warning=plan?.apiSize&&plan.apiSize!==actualSize?`接口返回 ${actualSize}，与请求 ${plan.apiSize} 不一致；已保留接口原图。`:null;
+    const detail={originalAssetId:original.id,finalAssetId:original.id,originalName:original.name,originalMime:original.mime,finalName:original.name,finalMime:original.mime,sourceWidth:bmp.width,sourceHeight:bmp.height,width:bmp.width,height:bmp.height,method:'native',...(plan?{aspectRatio:plan.aspectRatio,resolution:plan.resolution,apiSize:plan.apiSize}:{}),...(warning?{warning}:{})};bmp.close();return detail;
   }
+
   async function runJob(run) {
     const p=state.provider[run.snapshot.providerId],key=keyFor(p),controller=new AbortController();active.set(run.id,controller);run.status='running';emitRun(run);
     try{
       const s=run.snapshot;if(p.protocol==='mock'){
         if(s.mode==='chat')run.text=`本地演示 · 未调用外部 API\n\n${s.currentPrompt}`;
-        else {const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;const ctx=canvas.getContext('2d');ctx.fillStyle='#e5e7eb';ctx.fillRect(0,0,256,256);ctx.fillStyle='#333';ctx.font='18px sans-serif';ctx.fillText('Light Canvas',52,128);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));const detail=await renderImage(blob,s.imageDelivery,0);run.assetIds.push(detail.finalAssetId);run.imageDelivery=[detail]}
+        else {const canvas=document.createElement('canvas');const [w,h]=(s.imageDelivery?.apiSize||'256x256').split('x').map(Number);canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.fillStyle='#e5e7eb';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#333';ctx.font='18px sans-serif';ctx.fillText('Light Canvas',52,128);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));const detail=await renderImage(blob,s.imageDelivery,0);run.assetIds.push(detail.finalAssetId);run.imageDelivery=[detail]}
       }else{
         assert(key,'此接口尚未配置 API 密钥');let payload=s.request,body,headers={Accept:'application/json',Authorization:`Bearer ${key}`};
         if(s.transport==='multipart'){const form=new FormData();for(const [name,value] of Object.entries(payload))if(name!=='images')form.append(name,String(value));for(const image of payload.images){const blob=await loadAsset(image.assetId);form.append(payload.images.length===1?'image':'image[]',blob,image.name)}body=form}

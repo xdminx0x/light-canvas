@@ -19470,7 +19470,7 @@ const lc12ImageRatios = ["auto", "1:1", "9:16", "16:9", "3:4", "4:3", "2:3", "3:
 const lc12ImageTiers = ["auto", "1k", "2k", "4k"];
 const lc12ImageLongEdges = { "1k": 1024, "2k": 2048, "4k": 3840 };
 
-function lc12ImageSelection(params) {
+function lc12ImageSelection(params, model) {
   const oldDimensions = eg(params.size);
   const oldRatio = WS(params.size);
   const ratio = lc12ImageRatios.includes(params.imageAspectRatio)
@@ -19489,15 +19489,17 @@ function lc12ImageSelection(params) {
     const factor = longEdge / Math.max(width, height);
     dimensions = { width: Math.round(width * factor), height: Math.round(height * factor) };
   }
-  return { ratio, tier, dimensions, explicitSizing };
+  const sizing = explicitSizing ? window.LightCanvasSizing.preview(model,params) : null;
+  if(explicitSizing) dimensions=sizing?.apiSize?eg(sizing.apiSize):null;
+  return { ratio, tier, dimensions, explicitSizing, sizing };
 }
 
 function nE({ model: e12, params: i, onChange: l, compact: a = false, disabled: o = false }) {
   const id = L.useId();
   const capability = Wp(e12);
-  const selection = lc12ImageSelection(i);
-  // Delivery sizing is validated by the server, independently of the API's native sizes.
-  const issues = tE(e12, { ...i, size: void 0 });
+  const selection = lc12ImageSelection(i,e12);
+  // UI and request builder share native size validation.
+  const issues = [...tE(e12, { ...i, size: void 0 }),...(selection.sizing?.error?[selection.sizing.error]:[])];
   const retainedQuality = i.quality && capability.qualities && !capability.qualities.includes(i.quality);
   const setRatio = (ratio) => l({
     imageAspectRatio: ratio,
@@ -19508,12 +19510,7 @@ function nE({ model: e12, params: i, onChange: l, compact: a = false, disabled: 
   const dimensionsText = selection.dimensions
     ? `${selection.dimensions.width} × ${selection.dimensions.height} 像素`
     : selection.tier !== "auto" ? `长边 ${lc12ImageLongEdges[selection.tier]} 像素 · 比例由模型决定` : "尺寸与比例由模型决定";
-  let deliveryText = selection.tier === "auto" && selection.ratio === "auto"
-    ? "按接口默认尺寸返回原图。"
-    : "先按模型支持的尺寸生成；需要时本地放大或补边，保留原图。放大不会增加原生细节。";
-  if (selection.explicitSizing && selection.tier === "auto" && selection.ratio !== "auto") {
-    deliveryText = "固定比例的自动分辨率使用 1K。需要时本地调整尺寸或补边，保留原图。";
-  }
+  const deliveryText = selection.sizing?.error || selection.sizing?.note || "按接口默认尺寸返回原图。";
   return b.jsxs("fieldset", {
     className: `image-options image-options-v12 nodrag nowheel${a ? " is-compact" : ""}`,
     disabled: o,
@@ -19676,6 +19673,7 @@ function lc12ImageDelivery({run}) {
   if (!run || !Array.isArray(run.imageDelivery) || !run.imageDelivery.length) return null;
   return b.jsx("div",{className:"image-delivery-details",children:run.imageDelivery.map((item,index) => b.jsxs("div",{className:"image-delivery-line",children:[
     b.jsxs("span",{children:[item.width," × ",item.height, " · ",item.method === "native" ? "API 原图" : item.method === "original-fallback" ? "原图 · 本地处理未完成" : "本地调整"]}),
+    item.warning && b.jsx("span",{role:"status",children:item.warning}),
     item.originalAssetId && item.originalAssetId !== item.finalAssetId && b.jsx("a",{href:"/api/assets/"+item.originalAssetId,download:item.originalName || "api-original-"+(index+1),children:"下载原图"})
   ]},item.finalAssetId || index))});
 }
@@ -19683,7 +19681,7 @@ function lc12ImageDelivery({run}) {
 
 function lc13NodeOptions({data,children}) {
   const image=data.mode === "image";
-  const selection=lc12ImageSelection(data.params || {});
+  const selection=lc12ImageSelection(data.params || {},data.model);
   const model=data.model?.startsWith("demo-") ? "本地演示" : data.model || "选择模型";
   const parts=[model];
   if(image) {
@@ -19902,6 +19900,8 @@ function lcImageResult({run,initialAssetId}) {
       b.jsxs("figcaption",{children:[b.jsxs("div",{className:"image-result-caption",children:[b.jsx("span",{title:name,children:name}),delivery?.width&&delivery?.height&&b.jsx("small",{children:`${delivery.width} × ${delivery.height}`})]}),b.jsxs("a",{className:"image-download",href:window.__lcAssetUrl(id),download:name,children:[b.jsx(Xa,{size:15}),"下载图片"]})]})
     ]}):b.jsx("div",{className:"image-result-stage is-empty",children:b.jsx("p",{className:"image-detail-muted",children:_m(run)?"正在等待图片返回…":"这次请求没有生成图片"})}),
     ids.length>1&&b.jsx("div",{className:"image-result-filmstrip","aria-label":"本次生成图片",children:ids.map((assetId,i)=>b.jsx("button",{type:"button","aria-label":`查看第 ${i+1} 张图片`,"aria-pressed":index===i,onClick:()=>setSelected(i),children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(assetId),alt:`生成图片 ${i+1}`})},assetId))}),
+    delivery?.warning&&b.jsx("p",{role:"status",className:"image-detail-muted",children:delivery.warning}),
+    delivery?.method==="local-resize"&&b.jsx("p",{className:"image-detail-muted",children:"旧版记录：此图曾经过本地缩放或补边，画面比例不代表 API 原生出图比例。"}),
     b.jsx(lcGenerationDetails,{run}),
     b.jsxs("dl",{className:"image-result-facts",children:[
       b.jsxs("div",{className:"image-api-fact",children:[b.jsx("dt",{children:"API 接口"}),b.jsx("dd",{children:run.providerName||snap.providerName||"未记录"}),b.jsx("dd",{className:"image-detail-muted",children:run.model||snap.model||"未记录模型"})]}),
@@ -20827,7 +20827,7 @@ function V8() {
   }, onPointerDown: (Z) => {
     var ue;
     Ab(Z.target) || (ue = pasteSink.current || de.current) == null || ue.focus({ preventScroll: true });
-  }, children: [b.jsx("div",{ref:pasteSink,contentEditable:true,suppressContentEditableWarning:true,className:"canvas-paste-target",tabIndex:-1,"aria-hidden":true,onInput:event=>{event.currentTarget.textContent="";}}), b.jsx("input",{ref:canvasImageInput,hidden:true,type:"file",accept:"image/png,image/jpeg,image/webp",multiple:true,"aria-label":"导入多张图片",onChange:event=>{const files=lc15ClipboardImages({files:event.currentTarget.files});event.currentTarget.value="";if(files.length)pasteImages(files);}}), Ee ? b.jsx(iE.Provider, { value: Za, children: b.jsxs(RA, { onlyRenderVisibleElements:true, nodes: Ee.nodes.map((Z) => ({ ...Z, type: "canvas", dragHandle: ".node-drag-handle" })), edges: Ee.edges.map(edge => {
+  }, children: [b.jsx("div",{ref:pasteSink,contentEditable:true,suppressContentEditableWarning:true,className:"canvas-paste-target",tabIndex:-1,"aria-hidden":true,onInput:event=>{event.currentTarget.textContent="";}}), b.jsx("input",{ref:canvasImageInput,hidden:true,type:"file",accept:"image/png,image/jpeg,image/webp",multiple:true,"aria-label":"导入多张图片",onChange:event=>{const files=lc15ClipboardImages({files:event.currentTarget.files});event.currentTarget.value="";if(files.length)pasteImages(files);}}), Ee ? b.jsx(iE.Provider, { value: Za, children: b.jsxs(RA, { onlyRenderVisibleElements:true, nodes: Ee.nodes.map((Z) => ({ ...Z, type: "canvas", sourcePosition:Ie.Right, targetPosition:Ie.Left, dragHandle: ".node-drag-handle" })), edges: Ee.edges.map(edge => {
   const source = lcNodeIndex.get(edge.source), target = lcNodeIndex.get(edge.target);
   const images = source?.data.runId ? c[source.data.runId]?.assetIds : source?.data.assetIds;
   return {...edge, type: "default", pathOptions: {curvature: 0.3}, label: edge.data?.kind === "generation" ? undefined : target?.data.mode === "image" && images?.length ? "参考图" : edge.label};
