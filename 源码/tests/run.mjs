@@ -1,0 +1,17 @@
+import {readFile,writeFile,mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {spawnSync} from 'node:child_process';
+const htmlPath=fileURLToPath(new URL('../../轻画布.html',import.meta.url));
+const html=await readFile(htmlPath,'utf8');
+const match=html.match(/<script id="lc-seed" type="application\/json">([\s\S]*?)<\/script>/);
+const fixture=JSON.parse(match[1]);fixture.state.provider={"openai-responses":{"id":"openai-responses","name":"OpenAI 聊天 · Responses","protocol":"responses","baseUrl":"https://api.openai.com/v1","models":["chat-latest","gpt-4.1","gpt-4.1-2025-04-14","gpt-4.1-mini","gpt-4.1-mini-2025-04-14","gpt-4o","gpt-4o-2024-08-06","gpt-4o-2024-11-20","gpt-4o-mini","gpt-4o-mini-2024-07-18","gpt-5","gpt-5-2025-08-07","gpt-5-mini","gpt-5-mini-2025-08-07","gpt-5-nano","gpt-5-nano-2025-08-07","gpt-5-pro","gpt-5-pro-2025-10-06","gpt-5.1","gpt-5.1-2025-11-13","gpt-5.2","gpt-5.2-2025-12-11","gpt-5.2-pro","gpt-5.2-pro-2025-12-11","gpt-5.3-codex","gpt-5.4","gpt-5.4-2026-03-05","gpt-5.4-mini","gpt-5.4-mini-2026-03-17","gpt-5.4-nano","gpt-5.4-nano-2026-03-17","gpt-5.4-pro","gpt-5.4-pro-2026-03-05","gpt-5.5","gpt-5.5-2026-04-23","gpt-5.5-pro","gpt-5.5-pro-2026-04-23","gpt-5.6-luna","gpt-5.6-sol","gpt-5.6-terra","gpt-6-astra","gpt-6-luna","gpt-6-sol","gpt-6.1-sol","gpt-6.1-terra","o3","o3-2025-04-16"],"enabled":true,"imageInput":true,"imageEdit":true},"openai-chat":{"id":"openai-chat","name":"OpenAI 聊天 · Chat Completions","protocol":"chat-completions","baseUrl":"https://api.openai.com/v1","models":["chat-latest","gpt-4.1","gpt-4.1-2025-04-14","gpt-4.1-mini","gpt-4.1-mini-2025-04-14","gpt-4o","gpt-4o-2024-08-06","gpt-4o-2024-11-20","gpt-4o-mini","gpt-4o-mini-2024-07-18","gpt-5","gpt-5-2025-08-07","gpt-5-mini","gpt-5-mini-2025-08-07","gpt-5-nano","gpt-5-nano-2025-08-07","gpt-5-search-api","gpt-5-search-api-2025-10-14","gpt-5.1","gpt-5.1-2025-11-13","gpt-5.2","gpt-5.2-2025-12-11","gpt-5.4","gpt-5.4-2026-03-05","gpt-5.4-mini","gpt-5.4-mini-2026-03-17","gpt-5.4-nano","gpt-5.4-nano-2026-03-17","gpt-5.5","gpt-5.5-2026-04-23","gpt-5.6-luna","gpt-5.6-sol","gpt-5.6-terra","gpt-6-astra","gpt-6-luna","gpt-6-sol","gpt-6.1-sol","gpt-6.1-terra","o3","o3-2025-04-16"],"enabled":true,"imageInput":true,"imageEdit":true},"openai-images":{"id":"openai-images","name":"OpenAI 生图","protocol":"images","baseUrl":"https://api.openai.com/v1","models":["chatgpt-image-latest","gpt-image-1-mini","gpt-image-1.5","gpt-image-2","gpt-image-2-2026-04-21","gpt-image-2.5-flare","gpt-image-2.5-flare-2026-09-08","gpt-image-2.5-sunburst","gpt-image-2.5-sunburst-2026-09-08","gpt-image-2.6-flare","gpt-image-2.6-sunburst"],"enabled":true,"imageInput":true,"imageEdit":true},"demo":{"id":"demo","name":"本地演示","protocol":"mock","baseUrl":"","models":["demo-chat","demo-image"],"enabled":true,"imageInput":true,"imageEdit":true}};
+const temp=await mkdtemp(join(tmpdir(),'light-canvas-tests-'));
+try {
+ const file=join(temp,'fixture.html');await writeFile(file,html.replace(match[1],JSON.stringify(fixture)));
+ for(const name of ['interactions','folder-interactions','layout','clipboard-mentions','resources']) {
+  const result=spawnSync(process.execPath,[fileURLToPath(new URL(name+'.mjs',import.meta.url)),name==='resources'?htmlPath:file],{stdio:'inherit',env:process.env});
+  if(result.status!==0)throw Error(name+' failed: '+result.status);
+ }
+} finally {await rm(temp,{recursive:true,force:true});}

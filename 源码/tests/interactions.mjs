@@ -1,0 +1,86 @@
+const {chromium}=await import(process.env.LC_PLAYWRIGHT || 'playwright');
+import {pathToFileURL,fileURLToPath} from 'node:url';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const file=process.argv[2]||fileURLToPath(new URL('../../轻画布.html',import.meta.url));
+const browser=await chromium.launch({executablePath:process.env.LC_BROWSER || undefined,headless:true});
+try {
+const page=await browser.newPage({viewport:{width:1440,height:960}});const errors=[];let external=0;
+page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+await page.route('https://**',route=>{external++;return route.abort();});
+await page.goto(pathToFileURL(path.resolve(file)).href);
+await page.getByRole('button',{name:'临时打开',exact:true}).click();
+await page.locator('.app-shell').waitFor();
+assert.equal(await page.locator('.react-flow__edge-text').filter({hasText:/^生成$/}).count(),0,'existing generation labels');
+await page.getByRole('button',{name:'新建画布',exact:true}).first().click();
+await page.getByRole('button',{name:'新建输入',exact:true}).first().click();
+const field=page.getByRole('textbox',{name:'提示词',exact:true}).first();
+await field.click();await field.pressSequentially('hello world 123',{delay:30});
+await page.keyboard.press('ArrowLeft');await page.keyboard.press('Backspace');await page.keyboard.insertText('中文');
+assert.equal(await field.inputValue(),'hello world 1中文3');
+await page.keyboard.press('Enter');await page.keyboard.insertText('第二行');
+assert.equal(await field.inputValue(),'hello world 1中文\n第二行3');
+const cdp=await page.context().newCDPSession(page);
+await cdp.send('Input.imeSetComposition',{text:'ceshi',selectionStart:5,selectionEnd:5});
+await cdp.send('Input.insertText',{text:'测试输入法'});
+assert.ok((await field.inputValue()).includes('测试输入法'));
+await page.waitForTimeout(850);const prompt=await field.inputValue();
+assert.equal(await field.evaluate(e=>e===document.activeElement),true);
+await page.getByRole('button',{name:'生图',exact:true}).first().click();
+await page.waitForTimeout(800);
+const workspace=await page.evaluate(()=>Object.values(window.__lcBackend.getState().workspace).at(-1));
+const input=workspace.nodes.find(n=>n.data.kind==='input');
+const pasteImage=async target=>page.evaluate(async target=>{
+  const canvas=document.createElement('canvas');canvas.width=3;canvas.height=2;const ctx=canvas.getContext('2d');ctx.fillStyle='red';ctx.fillRect(0,0,3,2);
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+  const file=new File([blob],'clipboard.png',{type:'image/png'});const clipboard=new DataTransfer();clipboard.items.add(file);
+  const element=target==='field'?document.querySelector('.prompt-input'):document.querySelector('.canvas-container');
+  element.focus();
+  const event=new ClipboardEvent('paste',{clipboardData:clipboard,bubbles:true,cancelable:true});element.dispatchEvent(event);
+  return {handled:event.defaultPrevented,bytes:blob.size};
+},target);
+assert.equal((await pasteImage('canvas')).handled,true);
+await page.getByTestId('node-reference-image').waitFor();
+await page.waitForTimeout(900);
+let current=await page.evaluate(id=>window.__lcBackend.getState().workspace[id],workspace.id);
+assert.equal(current.nodes.filter(n=>n.data.kind==='image'&&!n.data.runId).length,1);
+assert.equal(current.edges.length,0);
+// Native paste must be allowed for both platform modifier keys.
+assert.deepEqual(await page.evaluate(()=>[false,true].map(meta=>{const e=new KeyboardEvent('keydown',{key:'v',ctrlKey:!meta,metaKey:meta,bubbles:true,cancelable:true});document.querySelector('.canvas-container').dispatchEvent(e);return e.defaultPrevented;})),[false,false]);
+await page.locator('.canvas-container').focus();await page.keyboard.press('f');await page.waitForTimeout(350);
+const imageId=current.nodes.find(n=>n.data.kind==='image').id;
+await page.locator(`.react-flow__node[data-id="${imageId}"] .react-flow__handle.source`).click();
+await page.locator(`.react-flow__node[data-id="${input.id}"] .react-flow__handle.target`).click();
+await page.waitForTimeout(850);
+current=await page.evaluate(id=>window.__lcBackend.getState().workspace[id],workspace.id);
+assert.equal(current.edges.length,1);assert.equal(current.edges[0].data.kind,'reference');
+assert.equal((await pasteImage('field')).handled,true);
+await page.waitForTimeout(1000);
+current=await page.evaluate(id=>window.__lcBackend.getState().workspace[id],workspace.id);
+assert.equal(current.nodes.filter(n=>n.data.kind==='image').length,2);
+assert.equal(current.edges.length,2);assert.equal(current.nodes.find(n=>n.id===input.id).data.assetIds.length,0);
+const preview=await page.evaluate(async({wid,nid})=>window.__lcBackend.route('/api/preview',{method:'POST',body:JSON.stringify({workspaceId:wid,nodeId:nid})}).then(r=>r.json()),{wid:workspace.id,nid:input.id});
+assert.equal(preview.currentPrompt,prompt);assert.equal(preview.attachmentCount,2);assert.equal(preview.transport,'multipart');
+assert.equal(preview.request.prompt,prompt);
+assert.equal(await page.getByTestId('node-reference-image').locator('img').first().evaluate(e=>e.complete&&e.naturalWidth===3),true);
+// Undo / redo the last pasted node as a single canvas action.
+await page.locator('.canvas-container').focus();await page.keyboard.press('Control+z');
+await page.waitForTimeout(650);assert.equal(await page.getByTestId('node-reference-image').count(),1);
+await page.keyboard.press('Control+Shift+z');await page.waitForTimeout(650);assert.equal(await page.getByTestId('node-reference-image').count(),2);
+// Local demo generation verifies new generation links also have no label.
+await field.click();await field.fill('快捷键发送测试');
+await page.locator('details.node-configuration').first().evaluate(e=>e.open=true);
+await page.getByRole('combobox',{name:'节点模型'}).selectOption('demo::demo-image');
+await field.press('Control+Enter');await page.waitForTimeout(1800);
+const generated=await page.evaluate(id=>{
+ const s=window.__lcBackend.getState(),w=s.workspace[id];
+ return {runs:Object.values(s.run).filter(r=>r.workspaceId===id).map(r=>({status:r.status,mode:r.mode,assets:r.assetIds.length})),generationEdges:w.edges.filter(e=>e.data?.kind==='generation').length};
+},workspace.id);
+assert.equal(generated.generationEdges,1);assert.equal(generated.runs.length,1);assert.equal(generated.runs[0].status,'completed');assert.equal(generated.runs[0].assets,1);
+assert.equal(await page.locator('.react-flow__edge-text').filter({hasText:/^生成$/}).count(),0,'new generation labels');
+assert.equal(external,0);assert.deepEqual(errors,[]);
+await page.locator('details.node-configuration').first().evaluate(e=>e.open=false);
+await page.locator('.canvas-container').focus();await page.keyboard.press('f');await page.waitForTimeout(350);
+if(process.env.LC_SCREENSHOT_PATH) await page.screenshot({path:process.env.LC_SCREENSHOT_PATH});
+console.log(JSON.stringify({passed:true,typing:'Latin, Chinese IME, arrow keys, Backspace, Enter, autosave',clipboard:'canvas + prompt, image nodes, handles, exact reference images, undo/redo',externalCalls:external,errors}));
+} finally {await browser.close();}

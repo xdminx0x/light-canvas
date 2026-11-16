@@ -1,0 +1,15 @@
+# 本机数据与 API 配置
+画布数据/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 开发依赖和缓存
+node_modules/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+Thumbs.db
