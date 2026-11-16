@@ -1,6 +1,6 @@
 # 轻画布
 
-可双击打开的本地 AI 节点画布。当前版本 2.2.8。
+可双击打开的本地 AI 节点画布。当前版本 2.2.9。
 
 代码仓库：https://github.com/xdminx0x/light-canvas
 

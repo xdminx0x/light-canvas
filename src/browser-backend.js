@@ -251,7 +251,7 @@
       if(params.maxOutputTokens)request[isChat&&/^gpt-[5-9]/.test(d.model)?'max_completion_tokens':isChat?'max_tokens':'max_output_tokens']=params.maxOutputTokens;
       if(params.temperature!==undefined)request.temperature=params.temperature;
     }
-    return {messages,request,endpoint,imageReferences,transmittedPrompt,...(plan?{imageDelivery:plan}:{}),providerName:p.name,providerId:p.id,protocol:p.protocol,model:d.model,mode:d.mode,contextCount:Math.max(0,sources.length-1),attachmentCount:ids.size,assetIds:[...ids],attachments:[...ids].map(id=>({...state.asset[id],assetId:id})),currentAssetIds:hasMentions?imageReferences.map(i=>i.assetId):[...(d.assetIds||[])],sourceNodeIds:sources,workspaceId,nodeId,currentPrompt:d.prompt,transport,currency:p.currency||'USD'};
+    return {messages,request,endpoint,imageReferences,transmittedPrompt,...(plan?{imageDelivery:plan}:{}),providerName:p.name,providerId:p.id,protocol:p.protocol,model:d.model,mode:d.mode,contextCount:Math.max(0,sources.length-1),attachmentCount:ids.size,assetIds:[...ids],attachments:[...ids].map(id=>({...state.asset[id],assetId:id})),currentAssetIds:hasMentions?imageReferences.map(i=>i.assetId):[...(d.assetIds||[])],sourceNodeIds:sources,workspaceId,nodeId,currentPrompt:d.prompt,transport,currency:p.currency||'USD',inputPrice:p.inputPrice??null,outputPrice:p.outputPrice??null,imagePrice:p.imagePrice??null};
   }
   async function renderImage(blob,plan,index) {
     const original=await addAsset(blob,`generated-${index+1}-original.png`,blob.type||'image/png');
@@ -261,6 +261,21 @@
     const detail={originalAssetId:original.id,finalAssetId:original.id,originalName:original.name,originalMime:original.mime,finalName:original.name,finalMime:original.mime,sourceWidth:bmp.width,sourceHeight:bmp.height,width:bmp.width,height:bmp.height,method:'native',...(plan?{aspectRatio:plan.aspectRatio,resolution:plan.resolution,apiSize:plan.apiSize}:{}),...(warning?{warning}:{})};bmp.close();return detail;
   }
 
+  function providerPrices(p){const num=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;return{inputPrice:num(p?.inputPrice),outputPrice:num(p?.outputPrice),imagePrice:num(p?.imagePrice)}}
+  function estimateRunCost(run,p){
+    const prices=providerPrices(p),usage=run.usage||{};
+    const input=usage.input_tokens??usage.prompt_tokens,output=usage.output_tokens??usage.completion_tokens;
+    let cost=null,basis=null;
+    if(typeof input==='number'&&typeof output==='number'&&(prices.inputPrice!=null||prices.outputPrice!=null)){
+      cost=((prices.inputPrice!=null?input*prices.inputPrice:0)+(prices.outputPrice!=null?output*prices.outputPrice:0))/1e6;
+      basis={inputTokens:input,inputPrice:prices.inputPrice,outputTokens:output,outputPrice:prices.outputPrice};
+    }else if(run.mode==='image'&&prices.imagePrice!=null){
+      const images=Math.max(1,run.imageDelivery?.length||run.assetIds?.length||1);
+      cost=prices.imagePrice*images;basis={images,imagePrice:prices.imagePrice};
+    }
+    if(cost==null)return[null,null];
+    return[Math.round(cost*1e6)/1e6,{...basis,currency:p?.currency||'USD'}];
+  }
   async function runJob(run) {
     const p=state.provider[run.snapshot.providerId],key=keyFor(p),controller=new AbortController();active.set(run.id,controller);run.status='running';emitRun(run);
     try{
@@ -278,6 +293,8 @@
         }else if(s.protocol==='chat-completions')run.text=data.choices?.[0]?.message?.content||'';
         else run.text=data.output_text||data.output?.flatMap(item=>item.content||[]).filter(x=>x.type==='output_text').map(x=>x.text).join('')||'';
         run.usage=data.usage||null;
+        run.currency=p.currency||'USD';
+        const[estimate,basis]=estimateRunCost(run,p);run.cost=estimate;run.costBasis=basis;
       }
       if(run.status!=='cancelled')run.status='completed';emitRun(run);
     }catch(e){if(run.status!=='cancelled'){run.status='failed';run.error=e.name==='AbortError'?'已停止请求':escapeKey(e);emitRun(run)}}finally{active.delete(run.id)}
