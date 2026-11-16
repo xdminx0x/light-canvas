@@ -1,6 +1,7 @@
 /* Light Canvas local-file backend. All state and image bytes live in the chosen folder. */
 (() => {
   'use strict';
+  window.__lcAppVersion = '__LC_APP_VERSION__';
   const nativeFetch = window.fetch.bind(window);
   const seedElement = document.getElementById('lc-seed');
   const seed = JSON.parse(seedElement.textContent); seedElement.remove();
@@ -247,7 +248,7 @@
   async function backup(){const zip=new JSZip();zip.file('canvas.json',JSON.stringify(state));for(const id of Object.keys(state.asset))zip.file(`assets/${id}`,await loadAsset(id));return zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:1}})}
   async function route(url,options={}){
     await ready;const path=String(url).startsWith('/api/')?String(url).split('?')[0]:new URL(url,location.href).pathname,method=(options.method||'GET').toUpperCase();let b={};if(typeof options.body==='string')try{b=JSON.parse(options.body)}catch{}
-    if(path==='/api/bootstrap'){for(const w of all('workspace'))state.workspace[w.id]=window.LightCanvasImages.assign(w,state.run);return response({version:'2.2.0-html',dataDir:folder?.name||'临时使用',token:'local-file',workspaces:all('workspace'),providers:all('provider').map(publicProvider),runs:all('run'),assets:all('asset')});}
+    if(path==='/api/bootstrap'){for(const w of all('workspace'))state.workspace[w.id]=window.LightCanvasImages.assign(w,state.run);return response({version:'__LC_APP_VERSION__-html',dataDir:folder?.name||'临时使用',token:'local-file',workspaces:all('workspace'),providers:all('provider').map(publicProvider),runs:all('run'),assets:all('asset')});}
     if(path==='/api/preferences'&&method==='GET')return response(state.preferences||{});
     if(path==='/api/preferences'&&method==='PUT'){state.preferences[b.key]=b.value;await save();return response(state.preferences)}
     if(path==='/api/workspaces'&&method==='POST'){const w={id:crypto.randomUUID(),name:String(b.name||'新画布'),version:0,nodes:[],edges:[],viewport:{x:0,y:0,zoom:1},updatedAt:now()};state.workspace[w.id]=w;await save();return response(w,201)}

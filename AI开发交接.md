@@ -1,11 +1,11 @@
-# 轻画布开发交接 · 2.2.0
+# 轻画布开发交接 · 2.2.1
 
 详见更新日志.md。运行时双击轻画布.html，选择本机数据文件夹。仓库不包含用户数据；首次使用新建数据文件夹并配置 API。不要改回必须命令启动的服务器。
 
 ## 文件
 - 轻画布.html：由源码/rebuild.py 生成，仅程序与空白种子。
-- 画布数据/canvas.json：唯一用户状态，包括 API 配置；不可打印密钥或公开上传。
-- 画布数据/assets/：原始图片；thumbnails/：可重建 WebP 预览。
+- data/canvas.json：唯一用户状态，包括 API 配置；不可打印密钥或公开上传。
+- data/assets/：原始图片；thumbnails/：可重建 WebP 预览。
 - 源码/client-readable.js：继承的 React Flow 构建源码，lcAssetImage 负责可见范围与资源租约。
 - 源码/browser-backend.js：文件夹存储、缩略图、按需原图读取、API 转发。
 
@@ -19,3 +19,9 @@
 
 ## 检查
 Python 3 执行 源码/rebuild.py；在源码目录 npm test。Node/Playwright/Chrome；可用 LC_PLAYWRIGHT 指向模块 URL、LC_BROWSER 指向浏览器。resources.mjs 覆盖资源生命周期；其他测试覆盖输入法、粘贴、布局、引用。测试不得调用付费 API。
+
+## 每次更新必须执行
+- 递增 `源码/package.json` 的版本号；构建脚本从此处生成 HTML 标题、运行时及接口版本。
+- 同步 README 当前版本、本文标题及更新日志；行为有变化时更新操作说明。
+- 构建并验证后通过 CLI 提交、推送 GitHub，核对本地和远程一致。
+- 左键拖动空白处固定为框选，中键拖动为平移，不恢复互斥模式按钮。
