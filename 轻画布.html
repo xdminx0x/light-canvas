@@ -127,26 +127,62 @@
 .node-configuration + .input-bottom { margin-top:12px; }
 @media(prefers-reduced-motion:reduce){.node-configuration-chevron{transition:none;}}
 
-/* Saved generation context and per-workspace history. */
-.generation-details{margin:24px 0;text-align:left;font-size:14px}
-.generation-details h2{font-size:15px;margin:22px 0 8px;font-weight:600}
-.generation-prompt{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;max-width:75ch;margin:0}
-.generation-references{display:flex;gap:16px;flex-wrap:wrap}
-.generation-references figure{margin:0;width:128px;min-width:0}
-.generation-references img{display:block;width:128px;height:96px;object-fit:contain;background:#f4f4f4;border-radius:8px}
-.generation-references figcaption{font-size:12px;line-height:1.5;margin-top:6px;overflow-wrap:anywhere;color:#555}
-.image-history{padding:4px 24px 24px;overflow:auto;min-height:0}
-.image-history-entry{padding:24px 0;border-bottom:1px solid #e4e4e4}
-.image-history-entry header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px}
-.image-history-entry time{color:#555;font-variant-numeric:tabular-nums}
-.history-results{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0}
-.history-result{width:180px;padding:0;border:0;background:transparent;text-align:left;cursor:pointer}
-.history-result img{width:180px;height:140px;object-fit:contain;background:#f4f4f4;border-radius:8px}
-.history-result span{display:block;font-size:12px;overflow-wrap:anywhere;margin-top:6px;color:#555}
-.history-result:hover img{background:#e8e8e8}
-.history-result:focus-visible{outline:2px solid #333;outline-offset:4px}
-.history-empty{padding:40px 0;text-align:center;color:#555}
-@media(max-width:600px){.history-result,.history-result img{width:140px}.history-result img{height:110px}.generation-references figure,.generation-references img{width:110px}}
+/* Image viewer and saved-image browser. */
+.is-image .lc-reader{width:min(1120px,100%)}
+.is-image .lc-reader-article{width:100%;padding:24px 32px 28px;font-size:14px!important;line-height:1.6}
+.is-image .lc-reader-meta,.is-image .lc-reader-button[aria-label="查找文字"],.is-image .lc-reader-button[aria-label="复制完整原文"],.is-image .lc-reader-button[aria-label="下载完整原文"]{display:none}
+.is-image .lc-reader-header{padding:18px 28px;border-bottom:1px solid #e5e5e5}
+.is-image .lc-reader-heading h1{font-size:18px}
+.is-image .lc-reader-footer{min-height:34px;background:#fafafa}
+.image-result-layout{min-width:0}
+.image-result-figure{margin:0}
+.image-result-stage{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:clamp(220px,38dvh,440px);padding:20px;background:#f4f4f3;border-radius:8px;overflow:hidden}
+.image-result-stage img{display:block;width:100%;height:100%;object-fit:contain}
+.image-load-state{position:absolute;max-width:36ch;padding:16px;text-align:center;font-size:13px;color:#666}
+.image-result-figure>figcaption{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0 0;font-size:12px}
+.image-result-caption{display:flex;gap:12px;align-items:baseline;min-width:0;flex-wrap:wrap}
+.image-result-caption>span{overflow-wrap:anywhere}
+.image-result-caption small{color:#666;white-space:nowrap;font-variant-numeric:tabular-nums}
+.image-download{display:inline-flex;gap:6px;align-items:center;flex-shrink:0;color:#333;text-decoration:none;min-height:32px;border-radius:5px;padding:4px 8px}
+.image-download:hover{background:#efefef}
+.image-context-grid{display:grid;grid-template-columns:minmax(200px,.8fr) minmax(0,1.7fr);gap:32px;padding:20px 0 22px;margin-top:16px;border-top:1px solid #e5e5e5}
+.image-context-grid h2{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin:0 0 12px;line-height:1.5}
+.image-context-grid h2>span{font-weight:400;color:#666;font-size:12px}
+.generation-prompt{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;max-width:75ch;margin:0;font-size:14px}
+.generation-references{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:14px;align-items:start}
+.generation-references figure{margin:0;min-width:0;max-width:140px}
+.generation-references a{display:block;border-radius:6px;background:#f4f4f3;overflow:hidden}
+.generation-references img{display:block;width:100%;height:76px;object-fit:contain;padding:6px}
+.generation-references figcaption{font-size:11px;line-height:1.5;margin-top:6px;color:#666;overflow-wrap:anywhere}
+.image-detail-muted{color:#666;font-size:12px;margin:0;line-height:1.6}
+.image-result-facts{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr));gap:24px;padding:20px 0 0;margin:0;border-top:1px solid #e5e5e5;font-size:12px}
+.image-result-facts dt{color:#666;font-size:11px;margin-bottom:5px}
+.image-result-facts dd{margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.image-result-facts .image-detail-muted{font-size:11px;margin-top:3px}
+.image-result-filmstrip{display:flex;gap:8px;margin-top:16px;overflow:auto;padding:3px}
+.image-result-filmstrip button{flex-shrink:0;width:52px;height:52px;padding:4px;border:1px solid transparent;border-radius:6px;background:#f3f3f3;cursor:pointer}
+.image-result-filmstrip button[aria-pressed="true"]{border-color:#333;background:#e7e7e7}
+.image-result-filmstrip img{width:100%;height:100%;object-fit:contain}
+.image-history{padding:0 24px 24px;overflow:auto;min-height:min(460px,60dvh);scrollbar-color:#b8b8b8 transparent;overscroll-behavior:contain}
+.image-history-summary{display:flex;justify-content:space-between;gap:16px;padding:16px 0 20px;font-size:12px;color:#666}
+.image-history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:24px 18px;align-items:start}
+.history-result{display:block;min-width:0;width:100%;padding:0;border:0;border-radius:6px;background:transparent;text-align:center;cursor:pointer;color:#333}
+.history-image-mat{display:flex;align-items:center;justify-content:center;aspect-ratio:1;background:#f4f4f3;border-radius:6px;padding:12px;transition:background .15s ease}
+.history-result img{display:block;width:100%;height:100%;min-height:0;object-fit:contain}
+.history-image-name{display:block;margin-top:8px;line-height:1.5;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+.history-result:hover .history-image-mat{background:#eaeae8}
+.history-result:hover .history-image-name{color:#111}
+.history-result:focus-visible,.image-result-layout a:focus-visible,.image-result-layout button:focus-visible{outline:2px solid #555;outline-offset:4px}
+.history-empty{padding:64px 16px;display:flex;flex-direction:column;align-items:center;text-align:center;color:#666}
+.history-empty svg{margin-bottom:12px;color:#888}
+.history-empty p{margin:0 0 6px;color:#333;font-size:14px}
+.history-empty small{font-size:12px;line-height:1.7}
+.history-more{display:block;margin:28px auto 0}
+.image-result-layout ::selection{background:#dcdcd8;color:#111}
+@media(min-width:1400px){.image-context-grid{grid-template-columns:minmax(240px,.8fr) minmax(0,1.7fr)}}
+@media(max-width:760px){.is-image .lc-reader-article{padding:20px}.image-context-grid{gap:24px;grid-template-columns:minmax(140px,.75fr) minmax(0,1.4fr)}.image-result-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 24px}.image-result-stage{height:clamp(240px,40dvh,420px);padding:12px}.image-history-grid{grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:20px 14px}}
+@media(max-width:480px){.is-image .lc-reader-header{padding:14px 16px}.is-image .lc-reader-article{padding:16px}.image-context-grid{grid-template-columns:minmax(0,1fr);gap:24px;margin-top:12px;padding-top:20px}.generation-references{grid-template-columns:repeat(auto-fill,minmax(90px,1fr))}.image-result-figure>figcaption{align-items:flex-start;gap:8px}.image-history{padding:0 16px 20px}.image-history-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px}.history-image-mat{padding:8px}.image-result-stage{height:34dvh;min-height:220px}}
+@media(prefers-reduced-motion:reduce){.history-image-mat{transition:none}}
 
 
 #folder-gate{position:fixed;z-index:9999;inset:0;background:#f7f7f7;display:grid;place-items:center;font:15px/1.7 system-ui,-apple-system,sans-serif;color:#272727;padding:24px}
@@ -20085,7 +20121,7 @@ function lcAssetImage(props) {
       if(!next){setUrl('');lease?.release();lease=null;return;}
       window.__lcAcquireImage(id,original).then(value=>{
         if(disposed||!visible||ticket!==serial){value.release();return;}lease=value;setUrl(value.url);
-      }).catch(()=>{if(!disposed)setUrl('');});
+      }).catch(error=>{if(!disposed){setUrl('');rest.onError?.(error)}});
     },{rootMargin:'240px'});
     observer.observe(ref.current);
     return ()=>{disposed=true;serial++;observer.disconnect();lease?.release();};
@@ -20343,34 +20379,53 @@ function H8(e12) {
     return;
   }
 }
-function lcGenerationDetails({run, assets = {}}) {
+function lcGenerationDetails({run}) {
   const snap=run.snapshot||{}, refs=snap.attachments||[], prompt=snap.transmittedPrompt??snap.currentPrompt??snap.request?.prompt;
-  return b.jsxs("section",{className:"generation-details",children:[
-    b.jsx("h2",{children:"提示词"}),b.jsx("p",{className:"generation-prompt",children:prompt||"这条历史记录未保存提示词。"}),
-    b.jsx("h2",{children:"参考图片"}),refs.length?b.jsx("div",{className:"generation-references",children:refs.map(ref=>{
-      const id=ref.assetId||ref.id, name=ref.name||assets[id]?.name||"未命名图片";
-      return b.jsxs("figure",{children:[b.jsx("a",{href:window.__lcAssetUrl(id),target:"_blank",rel:"noopener noreferrer",title:"查看参考原图",children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:name})}),b.jsx("figcaption",{children:name})]},id);
-    })}):b.jsx("p",{className:"small muted",children:"本次未使用参考图。"})
+  return b.jsxs("div",{className:"image-context-grid",children:[
+    b.jsxs("section",{className:"image-reference-section",children:[b.jsxs("h2",{children:["参考图",refs.length>0&&b.jsx("span",{children:refs.length})]}),refs.length?b.jsx("div",{className:"generation-references",children:refs.map(ref=>{
+      const id=ref.assetId||ref.id, name=ref.name||"未命名图片";
+      return b.jsxs("figure",{children:[b.jsx("a",{href:window.__lcAssetUrl(id),target:"_blank",rel:"noopener noreferrer",title:"查看参考原图",children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:name})}),b.jsx("figcaption",{title:name,children:name})]},id);
+    })}):b.jsx("p",{className:"image-detail-muted",children:"未使用参考图"})]}),
+    b.jsxs("section",{className:"image-prompt-section",children:[b.jsx("h2",{children:"提示词"}),b.jsx("p",{className:"generation-prompt",children:prompt||"这条记录未保存提示词。"})]})
   ]});
 }
-function lcImageHistory({workspace, runs, assets, onRead}) {
-  const [open,setOpen]=L.useState(false),[limit,setLimit]=L.useState(20);
-  const close=L.useCallback(()=>setOpen(false),[]);
-  const history=Object.values(runs).filter(run=>run.workspaceId===workspace?.id&&run.mode==='image').sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
-  return b.jsxs(b.Fragment,{children:[b.jsxs("button",{className:"workspace-row",disabled:!workspace,onClick:()=>{setLimit(20);setOpen(true)},children:[b.jsx(vc,{size:17}),b.jsx("span",{children:"生图历史"})]}),open&&b.jsx(hc,{title:"生图历史",wide:true,onClose:close,children:b.jsxs("div",{className:"image-history",children:[
-    b.jsx("p",{className:"small muted",children:`${workspace?.name||"当前画布"} · ${history.length} 条记录。删除画布上的图片节点后，记录和图片仍会保留。`}),
-    !history.length&&b.jsx("p",{className:"history-empty",children:"这个画布还没有生图记录。"}),
-    history.slice(0,limit).map(run=>b.jsxs("article",{className:"image-history-entry",children:[
-      b.jsxs("header",{children:[b.jsx("strong",{children:run.model}),b.jsx("time",{dateTime:run.createdAt,children:new Date(run.createdAt).toLocaleString()}),b.jsx("span",{children:Tb[run.status]||run.status})]}),
-      b.jsx("p",{className:"small muted",children:run.providerName}),
-      b.jsx("div",{className:"history-results",children:(run.assetIds||[]).map(id=>b.jsxs("button",{className:"history-result",onClick:()=>{setOpen(false);onRead(run.id)},children:[b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:assets[id]?.name||"生成图片"}),b.jsx("span",{children:assets[id]?.name||"生成图片"})]},id))}),
-      b.jsx(lcGenerationDetails,{run,assets}),run.error&&b.jsx("p",{className:"run-error",children:run.error}),
-      b.jsx("button",{className:"btn compact",onClick:()=>{setOpen(false);onRead(run.id)},children:"展开图片结果"})
-    ]},run.id)),history.length>limit&&b.jsx("button",{className:"btn",onClick:()=>setLimit(n=>n+20),children:"加载更多记录"})
-  ]})})]});
+function lcImageResult({run,initialAssetId}) {
+  const ids=run.assetIds||[],[selected,setSelected]=L.useState(()=>Math.max(0,ids.indexOf(initialAssetId))),[loaded,setLoaded]=L.useState(''),[failed,setFailed]=L.useState('');
+  const index=Math.min(selected,Math.max(0,ids.length-1)),id=ids[index],delivery=run.imageDelivery?.[index],name=delivery?.finalName||`生成图片 ${index+1}`,snap=run.snapshot||{},usage=run.usage||{};
+  const input=usage.input_tokens??usage.prompt_tokens,output=usage.output_tokens??usage.completion_tokens,total=usage.total_tokens??(typeof input==='number'&&typeof output==='number'?input+output:undefined);
+  const tokenDetail=[typeof input==='number'?`输入 ${input.toLocaleString()}`:'',typeof output==='number'?`输出 ${output.toLocaleString()}`:''].filter(Boolean).join(' · ');
+  return b.jsxs("div",{className:"image-result-layout",children:[
+    id?b.jsxs("figure",{className:"image-result-figure",children:[
+      b.jsxs("div",{className:"image-result-stage",children:[b.jsx(lcAssetImage,{key:id,src:window.__lcAssetUrl(id),alt:name,original:true,onLoad:()=>setLoaded(id),onError:()=>setFailed(id)}),loaded!==id&&b.jsx("span",{className:"image-load-state",role:failed===id?'alert':'status',children:failed===id?"无法读取图片，请检查 data 文件夹中的原图文件。":"正在加载原图…"})]}),
+      b.jsxs("figcaption",{children:[b.jsxs("div",{className:"image-result-caption",children:[b.jsx("span",{title:name,children:name}),delivery?.width&&delivery?.height&&b.jsx("small",{children:`${delivery.width} × ${delivery.height}`})]}),b.jsxs("a",{className:"image-download",href:window.__lcAssetUrl(id),download:name,children:[b.jsx(Xa,{size:15}),"下载图片"]})]})
+    ]}):b.jsx("div",{className:"image-result-stage is-empty",children:b.jsx("p",{className:"image-detail-muted",children:_m(run)?"正在等待图片返回…":"这次请求没有生成图片"})}),
+    ids.length>1&&b.jsx("div",{className:"image-result-filmstrip","aria-label":"本次生成图片",children:ids.map((assetId,i)=>b.jsx("button",{type:"button","aria-label":`查看第 ${i+1} 张图片`,"aria-pressed":index===i,onClick:()=>setSelected(i),children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(assetId),alt:`生成图片 ${i+1}`})},assetId))}),
+    b.jsx(lcGenerationDetails,{run}),
+    b.jsxs("dl",{className:"image-result-facts",children:[
+      b.jsxs("div",{className:"image-api-fact",children:[b.jsx("dt",{children:"API 接口"}),b.jsx("dd",{children:run.providerName||snap.providerName||"未记录"}),b.jsx("dd",{className:"image-detail-muted",children:run.model||snap.model||"未记录模型"})]}),
+      b.jsxs("div",{children:[b.jsx("dt",{children:"预估费用"}),b.jsx("dd",{children:typeof run.cost==='number'?`${run.currency||'USD'} ${run.cost.toFixed(4)}`:"未提供"}),b.jsx("dd",{className:"image-detail-muted",children:"以服务商账单为准"})]}),
+      b.jsxs("div",{children:[b.jsx("dt",{children:"Token 消耗"}),b.jsx("dd",{children:typeof total==='number'?total.toLocaleString():"API 未返回总量"}),tokenDetail&&b.jsx("dd",{className:"image-detail-muted",children:tokenDetail})]}),
+      b.jsxs("div",{children:[b.jsx("dt",{children:"生成时间"}),b.jsx("dd",{children:run.createdAt?new Date(run.createdAt).toLocaleString():"未记录"}),b.jsx("dd",{className:"image-detail-muted",children:Tb[run.status]||run.status})]})
+    ]})
+  ]});
+}
+function lcImageHistory({workspace, runs, assets}) {
+  const [open,setOpen]=L.useState(false),[limit,setLimit]=L.useState(60),[selection,setSelection]=L.useState(null),scroll=L.useRef(0),grid=L.useRef(null);
+  const close=L.useCallback(()=>setOpen(false),[]),back=L.useCallback(()=>setSelection(null),[]);
+  const images=Object.values(runs).filter(run=>run.workspaceId===workspace?.id&&run.mode==='image').sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).flatMap(run=>(run.assetIds||[]).map((id,index)=>({run,id,index})));
+  L.useEffect(()=>{if(open&&!selection&&grid.current)grid.current.scrollTop=scroll.current},[open,selection]);
+  return b.jsxs(b.Fragment,{children:[b.jsxs("button",{className:"workspace-row",disabled:!workspace,onClick:()=>{setLimit(60);scroll.current=0;setOpen(true)},children:[b.jsx(vc,{size:17}),b.jsx("span",{children:"生图历史"})]}),
+    open&&!selection&&b.jsx(hc,{title:"生图历史",wide:true,onClose:close,children:b.jsxs("div",{className:"image-history",ref:grid,onScroll:e=>{scroll.current=e.currentTarget.scrollTop},children:[
+      b.jsxs("div",{className:"image-history-summary",children:[b.jsx("span",{children:workspace?.name||"当前画布"}),b.jsx("span",{children:`${images.length} 张图片`})]}),
+      images.length?b.jsx("div",{className:"image-history-grid",children:images.slice(0,limit).map(({run,id,index})=>{
+        const name=assets[id]?.name||run.imageDelivery?.[index]?.finalName||"生成图片";
+        return b.jsxs("button",{type:"button",className:"history-result",onClick:()=>setSelection({runId:run.id,assetId:id}),"aria-label":`查看图片结果：${name}`,children:[b.jsx("span",{className:"history-image-mat",children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:name})}),b.jsx("span",{className:"history-image-name",title:name,children:name})]},run.id+':'+id);})}):b.jsxs("div",{className:"history-empty",children:[b.jsx(vc,{size:32,strokeWidth:1.3}),b.jsx("p",{children:"还没有生成的图片"}),b.jsx("small",{children:"在当前画布生成图片后，会自动保存在这里。"})]}),
+      images.length>limit&&b.jsx("button",{className:"btn history-more",onClick:()=>setLimit(n=>n+60),children:"显示更多图片"})
+    ]})}),open&&selection&&b.jsx(rE,{key:selection.runId,runId:selection.runId,initialAssetId:selection.assetId,onClose:back})
+  ]});
 }
 
-function rE({ runId: e12, onClose: i, standalone: l = false }) {
+function rE({ runId: e12, onClose: i, standalone: l = false, initialAssetId }) {
   const [a, o] = L.useState(null), [s, c] = L.useState(""), [d, m] = L.useState(true), [g, y] = L.useState(""), [p, x] = L.useState(false), [v, S] = L.useState(() => {
     try {
       const ce = Number(localStorage.getItem("light-canvas:reader-font"));
@@ -20566,7 +20621,7 @@ function rE({ runId: e12, onClose: i, standalone: l = false }) {
         Ce("浏览器未允许复制，请选择文字后复制");
       }
   }
-  const _t = b.jsx("div", { className: `lc-reader-overlay ${l ? "lc-reader-standalone" : ""} ${p ? "lc-reader-fullscreen" : ""}`, onKeyDown: Zt, children: b.jsxs("div", { className: "lc-reader", ref: H, role: l ? "main" : "dialog", "aria-modal": l ? void 0 : true, "aria-labelledby": "lc-reader-title", tabIndex: -1, children: [b.jsxs("header", { className: "lc-reader-header", children: [b.jsxs("div", { className: "lc-reader-heading", children: [b.jsx("h1", { id: "lc-reader-title", children: (a == null ? void 0 : a.mode) === "image" ? "图片结果" : "阅读结果" }), b.jsx("p", { children: a ? `${a.providerName} · ${a.model}` : "读取已保存的内容" })] }), b.jsxs("div", { className: "lc-reader-actions", children: [l ? b.jsxs("a", { className: "lc-reader-button", href: "/", title: "打开画布", children: [b.jsx(pM, { size: 17 }), b.jsx("span", { className: "lc-reader-action-label", children: "画布" })] }) : b.jsx("button", { className: "lc-reader-button", title: "在独立窗口阅读", "aria-label": "在独立窗口阅读", onClick: () => {
+  const _t = b.jsx("div", { className: `lc-reader-overlay ${a?.mode === "image" ? "is-image" : ""} ${l ? "lc-reader-standalone" : ""} ${p ? "lc-reader-fullscreen" : ""}`, onKeyDown: Zt, children: b.jsxs("div", { className: "lc-reader", ref: H, role: l ? "main" : "dialog", "aria-modal": l ? void 0 : true, "aria-labelledby": "lc-reader-title", tabIndex: -1, children: [b.jsxs("header", { className: "lc-reader-header", children: [b.jsxs("div", { className: "lc-reader-heading", children: [b.jsx("h1", { id: "lc-reader-title", children: (a == null ? void 0 : a.mode) === "image" ? "图片结果" : "阅读结果" }), b.jsx("p", { children: a ? `${a.providerName} · ${a.model}` : "读取已保存的内容" })] }), b.jsxs("div", { className: "lc-reader-actions", children: [l ? b.jsxs("a", { className: "lc-reader-button", href: "/", title: "打开画布", children: [b.jsx(pM, { size: 17 }), b.jsx("span", { className: "lc-reader-action-label", children: "画布" })] }) : b.jsx("button", { className: "lc-reader-button", title: "在独立窗口阅读", "aria-label": "在独立窗口阅读", onClick: () => {
     Ee();
     const ce = window.open(`${location.href.split("#")[0]}#reader=${encodeURIComponent(e12)}`, "_blank", "popup,width=1100,height=860");
     ce ? ce.opener = null : Ce("浏览器阻止了新窗口，请允许本站弹出窗口");
@@ -20581,11 +20636,11 @@ function rE({ runId: e12, onClose: i, standalone: l = false }) {
   }, children: b.jsx(Yl, { size: 17 }) })] }), g && b.jsx("p", { className: "lc-reader-banner", role: "status", children: g }), b.jsx("div", { className: "lc-reader-scroll", ref: V, tabIndex: 0, "aria-label": "结果正文", onScroll: () => {
     const ce = V.current;
     ce && (he.current = ce.scrollHeight - ce.clientHeight - ce.scrollTop < 48, he.current && re(false), clearTimeout(me.current), me.current = setTimeout(Ee, 500));
-  }, children: b.jsxs("article", { className: "lc-reader-article", ref: $, style: { fontSize: v }, children: [d && b.jsx("p", { className: "lc-reader-empty", role: "status", children: "正在读取结果…" }), s && b.jsxs("div", { className: "lc-reader-empty", role: "alert", children: [b.jsx("p", { children: s }), b.jsx("button", { className: "lc-reader-text-button", onClick: () => D((ce) => ce + 1), children: "重新读取" })] }), (a == null ? void 0 : a.error) && b.jsxs("div", { className: "lc-reader-error", role: "alert", children: [b.jsx("strong", { children: Tb[a.status] }), b.jsx("p", { children: a.error }), b.jsx("p", { children: "已返回的内容保留在下方。" })] }), a?.mode === "image" && b.jsx(lcGenerationDetails,{run:a}), (a == null ? void 0 : a.text) && b.jsx(JS, { text: a.text }), a == null ? void 0 : a.assetIds.map((ce, K) => b.jsxs("figure", { className: "lc-reader-image", children: [b.jsx("a", { href: window.__lcAssetUrl(encodeURIComponent(ce)), target: "_blank", rel: "noopener noreferrer", title: "查看原始图片", children: b.jsx(lcAssetImage, { src: window.__lcAssetUrl(encodeURIComponent(ce)), alt: `生成结果 ${K + 1}`, original:true, onLoad: () => {
+  }, children: b.jsxs("article", { className: "lc-reader-article", ref: $, style: { fontSize: v }, children: [d && b.jsx("p", { className: "lc-reader-empty", role: "status", children: "正在读取结果…" }), s && b.jsxs("div", { className: "lc-reader-empty", role: "alert", children: [b.jsx("p", { children: s }), b.jsx("button", { className: "lc-reader-text-button", onClick: () => D((ce) => ce + 1), children: "重新读取" })] }), (a == null ? void 0 : a.error) && b.jsxs("div", { className: "lc-reader-error", role: "alert", children: [b.jsx("strong", { children: Tb[a.status] }), b.jsx("p", { children: a.error }), b.jsx("p", { children: "已返回的内容保留在下方。" })] }), a?.mode === "image" && b.jsx(lcImageResult,{key:a.id,run:a,initialAssetId}), (a == null ? void 0 : a.text) && b.jsx(JS, { text: a.text }), a == null || a.mode === "image" ? void 0 : a.assetIds.map((ce, K) => b.jsxs("figure", { className: "lc-reader-image", children: [b.jsx("a", { href: window.__lcAssetUrl(encodeURIComponent(ce)), target: "_blank", rel: "noopener noreferrer", title: "查看原始图片", children: b.jsx(lcAssetImage, { src: window.__lcAssetUrl(encodeURIComponent(ce)), alt: `生成结果 ${K + 1}`, original:true, onLoad: () => {
     te.current && qe(te.current);
   } }) }), b.jsxs("figcaption", { children: [b.jsxs("span", { children: [a.imageDelivery?.[K]?.finalName || `图片 ${K + 1}`] }), b.jsxs("a", { href: window.__lcAssetUrl(encodeURIComponent(ce)), download: true, children: [b.jsx(Xa, { size: 15 }), "下载原图"] })] })] }, ce)), a && !a.text && !a.assetIds.length && !a.error && b.jsx("p", { className: "lc-reader-empty", children: Nm(a) ? "这条结果没有返回正文或图片。" : "等待 API 返回内容…" })] }) }), ie && b.jsxs("button", { className: "lc-reader-latest", onClick: () => {
     V.current && (V.current.scrollTop = V.current.scrollHeight), he.current = true, re(false);
-  }, children: [b.jsx(mM, { size: 16 }), "有新内容，回到最新"] }), b.jsxs("footer", { className: "lc-reader-footer", children: [b.jsx("span", { children: G || U || "阅读、复制和下载不会再次调用模型" }), (a == null ? void 0 : a.cost) != null && b.jsxs("span", { children: [a.currency || "", " ", a.cost.toFixed(6)] })] }), b.jsx("span", { className: "lc-sr-only", role: "status", children: G })] }) });
+  }, children: [b.jsx(mM, { size: 16 }), "有新内容，回到最新"] }), b.jsxs("footer", { className: "lc-reader-footer", children: [b.jsx("span", { children: G || U || "阅读、复制和下载不会再次调用模型" }), a?.mode !== "image" && (a == null ? void 0 : a.cost) != null && b.jsxs("span", { children: [a.currency || "", " ", a.cost.toFixed(6)] })] }), b.jsx("span", { className: "lc-sr-only", role: "status", children: G })] }) });
   return l ? _t : Jc.createPortal(_t, document.body);
 }
 const B8 = { responses: "Responses", "chat-completions": "Chat Completions", images: "Images", mock: "本地演示（不联网）" }, Qu = (e12) => {

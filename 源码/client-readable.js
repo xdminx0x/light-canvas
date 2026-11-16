@@ -19610,7 +19610,7 @@ function lcAssetImage(props) {
       if(!next){setUrl('');lease?.release();lease=null;return;}
       window.__lcAcquireImage(id,original).then(value=>{
         if(disposed||!visible||ticket!==serial){value.release();return;}lease=value;setUrl(value.url);
-      }).catch(()=>{if(!disposed)setUrl('');});
+      }).catch(error=>{if(!disposed){setUrl('');rest.onError?.(error)}});
     },{rootMargin:'240px'});
     observer.observe(ref.current);
     return ()=>{disposed=true;serial++;observer.disconnect();lease?.release();};
@@ -19868,34 +19868,53 @@ function H8(e12) {
     return;
   }
 }
-function lcGenerationDetails({run, assets = {}}) {
+function lcGenerationDetails({run}) {
   const snap=run.snapshot||{}, refs=snap.attachments||[], prompt=snap.transmittedPrompt??snap.currentPrompt??snap.request?.prompt;
-  return b.jsxs("section",{className:"generation-details",children:[
-    b.jsx("h2",{children:"提示词"}),b.jsx("p",{className:"generation-prompt",children:prompt||"这条历史记录未保存提示词。"}),
-    b.jsx("h2",{children:"参考图片"}),refs.length?b.jsx("div",{className:"generation-references",children:refs.map(ref=>{
-      const id=ref.assetId||ref.id, name=ref.name||assets[id]?.name||"未命名图片";
-      return b.jsxs("figure",{children:[b.jsx("a",{href:window.__lcAssetUrl(id),target:"_blank",rel:"noopener noreferrer",title:"查看参考原图",children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:name})}),b.jsx("figcaption",{children:name})]},id);
-    })}):b.jsx("p",{className:"small muted",children:"本次未使用参考图。"})
+  return b.jsxs("div",{className:"image-context-grid",children:[
+    b.jsxs("section",{className:"image-reference-section",children:[b.jsxs("h2",{children:["参考图",refs.length>0&&b.jsx("span",{children:refs.length})]}),refs.length?b.jsx("div",{className:"generation-references",children:refs.map(ref=>{
+      const id=ref.assetId||ref.id, name=ref.name||"未命名图片";
+      return b.jsxs("figure",{children:[b.jsx("a",{href:window.__lcAssetUrl(id),target:"_blank",rel:"noopener noreferrer",title:"查看参考原图",children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:name})}),b.jsx("figcaption",{title:name,children:name})]},id);
+    })}):b.jsx("p",{className:"image-detail-muted",children:"未使用参考图"})]}),
+    b.jsxs("section",{className:"image-prompt-section",children:[b.jsx("h2",{children:"提示词"}),b.jsx("p",{className:"generation-prompt",children:prompt||"这条记录未保存提示词。"})]})
   ]});
 }
-function lcImageHistory({workspace, runs, assets, onRead}) {
-  const [open,setOpen]=L.useState(false),[limit,setLimit]=L.useState(20);
-  const close=L.useCallback(()=>setOpen(false),[]);
-  const history=Object.values(runs).filter(run=>run.workspaceId===workspace?.id&&run.mode==='image').sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
-  return b.jsxs(b.Fragment,{children:[b.jsxs("button",{className:"workspace-row",disabled:!workspace,onClick:()=>{setLimit(20);setOpen(true)},children:[b.jsx(vc,{size:17}),b.jsx("span",{children:"生图历史"})]}),open&&b.jsx(hc,{title:"生图历史",wide:true,onClose:close,children:b.jsxs("div",{className:"image-history",children:[
-    b.jsx("p",{className:"small muted",children:`${workspace?.name||"当前画布"} · ${history.length} 条记录。删除画布上的图片节点后，记录和图片仍会保留。`}),
-    !history.length&&b.jsx("p",{className:"history-empty",children:"这个画布还没有生图记录。"}),
-    history.slice(0,limit).map(run=>b.jsxs("article",{className:"image-history-entry",children:[
-      b.jsxs("header",{children:[b.jsx("strong",{children:run.model}),b.jsx("time",{dateTime:run.createdAt,children:new Date(run.createdAt).toLocaleString()}),b.jsx("span",{children:Tb[run.status]||run.status})]}),
-      b.jsx("p",{className:"small muted",children:run.providerName}),
-      b.jsx("div",{className:"history-results",children:(run.assetIds||[]).map(id=>b.jsxs("button",{className:"history-result",onClick:()=>{setOpen(false);onRead(run.id)},children:[b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:assets[id]?.name||"生成图片"}),b.jsx("span",{children:assets[id]?.name||"生成图片"})]},id))}),
-      b.jsx(lcGenerationDetails,{run,assets}),run.error&&b.jsx("p",{className:"run-error",children:run.error}),
-      b.jsx("button",{className:"btn compact",onClick:()=>{setOpen(false);onRead(run.id)},children:"展开图片结果"})
-    ]},run.id)),history.length>limit&&b.jsx("button",{className:"btn",onClick:()=>setLimit(n=>n+20),children:"加载更多记录"})
-  ]})})]});
+function lcImageResult({run,initialAssetId}) {
+  const ids=run.assetIds||[],[selected,setSelected]=L.useState(()=>Math.max(0,ids.indexOf(initialAssetId))),[loaded,setLoaded]=L.useState(''),[failed,setFailed]=L.useState('');
+  const index=Math.min(selected,Math.max(0,ids.length-1)),id=ids[index],delivery=run.imageDelivery?.[index],name=delivery?.finalName||`生成图片 ${index+1}`,snap=run.snapshot||{},usage=run.usage||{};
+  const input=usage.input_tokens??usage.prompt_tokens,output=usage.output_tokens??usage.completion_tokens,total=usage.total_tokens??(typeof input==='number'&&typeof output==='number'?input+output:undefined);
+  const tokenDetail=[typeof input==='number'?`输入 ${input.toLocaleString()}`:'',typeof output==='number'?`输出 ${output.toLocaleString()}`:''].filter(Boolean).join(' · ');
+  return b.jsxs("div",{className:"image-result-layout",children:[
+    id?b.jsxs("figure",{className:"image-result-figure",children:[
+      b.jsxs("div",{className:"image-result-stage",children:[b.jsx(lcAssetImage,{key:id,src:window.__lcAssetUrl(id),alt:name,original:true,onLoad:()=>setLoaded(id),onError:()=>setFailed(id)}),loaded!==id&&b.jsx("span",{className:"image-load-state",role:failed===id?'alert':'status',children:failed===id?"无法读取图片，请检查 data 文件夹中的原图文件。":"正在加载原图…"})]}),
+      b.jsxs("figcaption",{children:[b.jsxs("div",{className:"image-result-caption",children:[b.jsx("span",{title:name,children:name}),delivery?.width&&delivery?.height&&b.jsx("small",{children:`${delivery.width} × ${delivery.height}`})]}),b.jsxs("a",{className:"image-download",href:window.__lcAssetUrl(id),download:name,children:[b.jsx(Xa,{size:15}),"下载图片"]})]})
+    ]}):b.jsx("div",{className:"image-result-stage is-empty",children:b.jsx("p",{className:"image-detail-muted",children:_m(run)?"正在等待图片返回…":"这次请求没有生成图片"})}),
+    ids.length>1&&b.jsx("div",{className:"image-result-filmstrip","aria-label":"本次生成图片",children:ids.map((assetId,i)=>b.jsx("button",{type:"button","aria-label":`查看第 ${i+1} 张图片`,"aria-pressed":index===i,onClick:()=>setSelected(i),children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(assetId),alt:`生成图片 ${i+1}`})},assetId))}),
+    b.jsx(lcGenerationDetails,{run}),
+    b.jsxs("dl",{className:"image-result-facts",children:[
+      b.jsxs("div",{className:"image-api-fact",children:[b.jsx("dt",{children:"API 接口"}),b.jsx("dd",{children:run.providerName||snap.providerName||"未记录"}),b.jsx("dd",{className:"image-detail-muted",children:run.model||snap.model||"未记录模型"})]}),
+      b.jsxs("div",{children:[b.jsx("dt",{children:"预估费用"}),b.jsx("dd",{children:typeof run.cost==='number'?`${run.currency||'USD'} ${run.cost.toFixed(4)}`:"未提供"}),b.jsx("dd",{className:"image-detail-muted",children:"以服务商账单为准"})]}),
+      b.jsxs("div",{children:[b.jsx("dt",{children:"Token 消耗"}),b.jsx("dd",{children:typeof total==='number'?total.toLocaleString():"API 未返回总量"}),tokenDetail&&b.jsx("dd",{className:"image-detail-muted",children:tokenDetail})]}),
+      b.jsxs("div",{children:[b.jsx("dt",{children:"生成时间"}),b.jsx("dd",{children:run.createdAt?new Date(run.createdAt).toLocaleString():"未记录"}),b.jsx("dd",{className:"image-detail-muted",children:Tb[run.status]||run.status})]})
+    ]})
+  ]});
+}
+function lcImageHistory({workspace, runs, assets}) {
+  const [open,setOpen]=L.useState(false),[limit,setLimit]=L.useState(60),[selection,setSelection]=L.useState(null),scroll=L.useRef(0),grid=L.useRef(null);
+  const close=L.useCallback(()=>setOpen(false),[]),back=L.useCallback(()=>setSelection(null),[]);
+  const images=Object.values(runs).filter(run=>run.workspaceId===workspace?.id&&run.mode==='image').sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).flatMap(run=>(run.assetIds||[]).map((id,index)=>({run,id,index})));
+  L.useEffect(()=>{if(open&&!selection&&grid.current)grid.current.scrollTop=scroll.current},[open,selection]);
+  return b.jsxs(b.Fragment,{children:[b.jsxs("button",{className:"workspace-row",disabled:!workspace,onClick:()=>{setLimit(60);scroll.current=0;setOpen(true)},children:[b.jsx(vc,{size:17}),b.jsx("span",{children:"生图历史"})]}),
+    open&&!selection&&b.jsx(hc,{title:"生图历史",wide:true,onClose:close,children:b.jsxs("div",{className:"image-history",ref:grid,onScroll:e=>{scroll.current=e.currentTarget.scrollTop},children:[
+      b.jsxs("div",{className:"image-history-summary",children:[b.jsx("span",{children:workspace?.name||"当前画布"}),b.jsx("span",{children:`${images.length} 张图片`})]}),
+      images.length?b.jsx("div",{className:"image-history-grid",children:images.slice(0,limit).map(({run,id,index})=>{
+        const name=assets[id]?.name||run.imageDelivery?.[index]?.finalName||"生成图片";
+        return b.jsxs("button",{type:"button",className:"history-result",onClick:()=>setSelection({runId:run.id,assetId:id}),"aria-label":`查看图片结果：${name}`,children:[b.jsx("span",{className:"history-image-mat",children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:name})}),b.jsx("span",{className:"history-image-name",title:name,children:name})]},run.id+':'+id);})}):b.jsxs("div",{className:"history-empty",children:[b.jsx(vc,{size:32,strokeWidth:1.3}),b.jsx("p",{children:"还没有生成的图片"}),b.jsx("small",{children:"在当前画布生成图片后，会自动保存在这里。"})]}),
+      images.length>limit&&b.jsx("button",{className:"btn history-more",onClick:()=>setLimit(n=>n+60),children:"显示更多图片"})
+    ]})}),open&&selection&&b.jsx(rE,{key:selection.runId,runId:selection.runId,initialAssetId:selection.assetId,onClose:back})
+  ]});
 }
 
-function rE({ runId: e12, onClose: i, standalone: l = false }) {
+function rE({ runId: e12, onClose: i, standalone: l = false, initialAssetId }) {
   const [a, o] = L.useState(null), [s, c] = L.useState(""), [d, m] = L.useState(true), [g, y] = L.useState(""), [p, x] = L.useState(false), [v, S] = L.useState(() => {
     try {
       const ce = Number(localStorage.getItem("light-canvas:reader-font"));
@@ -20091,7 +20110,7 @@ function rE({ runId: e12, onClose: i, standalone: l = false }) {
         Ce("浏览器未允许复制，请选择文字后复制");
       }
   }
-  const _t = b.jsx("div", { className: `lc-reader-overlay ${l ? "lc-reader-standalone" : ""} ${p ? "lc-reader-fullscreen" : ""}`, onKeyDown: Zt, children: b.jsxs("div", { className: "lc-reader", ref: H, role: l ? "main" : "dialog", "aria-modal": l ? void 0 : true, "aria-labelledby": "lc-reader-title", tabIndex: -1, children: [b.jsxs("header", { className: "lc-reader-header", children: [b.jsxs("div", { className: "lc-reader-heading", children: [b.jsx("h1", { id: "lc-reader-title", children: (a == null ? void 0 : a.mode) === "image" ? "图片结果" : "阅读结果" }), b.jsx("p", { children: a ? `${a.providerName} · ${a.model}` : "读取已保存的内容" })] }), b.jsxs("div", { className: "lc-reader-actions", children: [l ? b.jsxs("a", { className: "lc-reader-button", href: "/", title: "打开画布", children: [b.jsx(pM, { size: 17 }), b.jsx("span", { className: "lc-reader-action-label", children: "画布" })] }) : b.jsx("button", { className: "lc-reader-button", title: "在独立窗口阅读", "aria-label": "在独立窗口阅读", onClick: () => {
+  const _t = b.jsx("div", { className: `lc-reader-overlay ${a?.mode === "image" ? "is-image" : ""} ${l ? "lc-reader-standalone" : ""} ${p ? "lc-reader-fullscreen" : ""}`, onKeyDown: Zt, children: b.jsxs("div", { className: "lc-reader", ref: H, role: l ? "main" : "dialog", "aria-modal": l ? void 0 : true, "aria-labelledby": "lc-reader-title", tabIndex: -1, children: [b.jsxs("header", { className: "lc-reader-header", children: [b.jsxs("div", { className: "lc-reader-heading", children: [b.jsx("h1", { id: "lc-reader-title", children: (a == null ? void 0 : a.mode) === "image" ? "图片结果" : "阅读结果" }), b.jsx("p", { children: a ? `${a.providerName} · ${a.model}` : "读取已保存的内容" })] }), b.jsxs("div", { className: "lc-reader-actions", children: [l ? b.jsxs("a", { className: "lc-reader-button", href: "/", title: "打开画布", children: [b.jsx(pM, { size: 17 }), b.jsx("span", { className: "lc-reader-action-label", children: "画布" })] }) : b.jsx("button", { className: "lc-reader-button", title: "在独立窗口阅读", "aria-label": "在独立窗口阅读", onClick: () => {
     Ee();
     const ce = window.open(`/reader/${encodeURIComponent(e12)}`, "_blank", "popup,width=1100,height=860");
     ce ? ce.opener = null : Ce("浏览器阻止了新窗口，请允许本站弹出窗口");
@@ -20106,11 +20125,11 @@ function rE({ runId: e12, onClose: i, standalone: l = false }) {
   }, children: b.jsx(Yl, { size: 17 }) })] }), g && b.jsx("p", { className: "lc-reader-banner", role: "status", children: g }), b.jsx("div", { className: "lc-reader-scroll", ref: V, tabIndex: 0, "aria-label": "结果正文", onScroll: () => {
     const ce = V.current;
     ce && (he.current = ce.scrollHeight - ce.clientHeight - ce.scrollTop < 48, he.current && re(false), clearTimeout(me.current), me.current = setTimeout(Ee, 500));
-  }, children: b.jsxs("article", { className: "lc-reader-article", ref: $, style: { fontSize: v }, children: [d && b.jsx("p", { className: "lc-reader-empty", role: "status", children: "正在读取结果…" }), s && b.jsxs("div", { className: "lc-reader-empty", role: "alert", children: [b.jsx("p", { children: s }), b.jsx("button", { className: "lc-reader-text-button", onClick: () => D((ce) => ce + 1), children: "重新读取" })] }), (a == null ? void 0 : a.error) && b.jsxs("div", { className: "lc-reader-error", role: "alert", children: [b.jsx("strong", { children: Tb[a.status] }), b.jsx("p", { children: a.error }), b.jsx("p", { children: "已返回的内容保留在下方。" })] }), a?.mode === "image" && b.jsx(lcGenerationDetails,{run:a}), (a == null ? void 0 : a.text) && b.jsx(JS, { text: a.text }), a == null ? void 0 : a.assetIds.map((ce, K) => b.jsxs("figure", { className: "lc-reader-image", children: [b.jsx("a", { href: `/api/assets/${encodeURIComponent(ce)}`, target: "_blank", rel: "noopener noreferrer", title: "查看原始图片", children: b.jsx(lcAssetImage, { src: `/api/assets/${encodeURIComponent(ce)}`, alt: `生成结果 ${K + 1}`, original:true, onLoad: () => {
+  }, children: b.jsxs("article", { className: "lc-reader-article", ref: $, style: { fontSize: v }, children: [d && b.jsx("p", { className: "lc-reader-empty", role: "status", children: "正在读取结果…" }), s && b.jsxs("div", { className: "lc-reader-empty", role: "alert", children: [b.jsx("p", { children: s }), b.jsx("button", { className: "lc-reader-text-button", onClick: () => D((ce) => ce + 1), children: "重新读取" })] }), (a == null ? void 0 : a.error) && b.jsxs("div", { className: "lc-reader-error", role: "alert", children: [b.jsx("strong", { children: Tb[a.status] }), b.jsx("p", { children: a.error }), b.jsx("p", { children: "已返回的内容保留在下方。" })] }), a?.mode === "image" && b.jsx(lcImageResult,{key:a.id,run:a,initialAssetId}), (a == null ? void 0 : a.text) && b.jsx(JS, { text: a.text }), a == null || a.mode === "image" ? void 0 : a.assetIds.map((ce, K) => b.jsxs("figure", { className: "lc-reader-image", children: [b.jsx("a", { href: `/api/assets/${encodeURIComponent(ce)}`, target: "_blank", rel: "noopener noreferrer", title: "查看原始图片", children: b.jsx(lcAssetImage, { src: `/api/assets/${encodeURIComponent(ce)}`, alt: `生成结果 ${K + 1}`, original:true, onLoad: () => {
     te.current && qe(te.current);
   } }) }), b.jsxs("figcaption", { children: [b.jsxs("span", { children: [a.imageDelivery?.[K]?.finalName || `图片 ${K + 1}`] }), b.jsxs("a", { href: `/api/assets/${encodeURIComponent(ce)}?download=1`, download: true, children: [b.jsx(Xa, { size: 15 }), "下载原图"] })] })] }, ce)), a && !a.text && !a.assetIds.length && !a.error && b.jsx("p", { className: "lc-reader-empty", children: Nm(a) ? "这条结果没有返回正文或图片。" : "等待 API 返回内容…" })] }) }), ie && b.jsxs("button", { className: "lc-reader-latest", onClick: () => {
     V.current && (V.current.scrollTop = V.current.scrollHeight), he.current = true, re(false);
-  }, children: [b.jsx(mM, { size: 16 }), "有新内容，回到最新"] }), b.jsxs("footer", { className: "lc-reader-footer", children: [b.jsx("span", { children: G || U || "阅读、复制和下载不会再次调用模型" }), (a == null ? void 0 : a.cost) != null && b.jsxs("span", { children: [a.currency || "", " ", a.cost.toFixed(6)] })] }), b.jsx("span", { className: "lc-sr-only", role: "status", children: G })] }) });
+  }, children: [b.jsx(mM, { size: 16 }), "有新内容，回到最新"] }), b.jsxs("footer", { className: "lc-reader-footer", children: [b.jsx("span", { children: G || U || "阅读、复制和下载不会再次调用模型" }), a?.mode !== "image" && (a == null ? void 0 : a.cost) != null && b.jsxs("span", { children: [a.currency || "", " ", a.cost.toFixed(6)] })] }), b.jsx("span", { className: "lc-sr-only", role: "status", children: G })] }) });
   return l ? _t : Jc.createPortal(_t, document.body);
 }
 const B8 = { responses: "Responses", "chat-completions": "Chat Completions", images: "Images", mock: "本地演示（不联网）" }, Qu = (e12) => {
