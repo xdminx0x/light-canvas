@@ -28,6 +28,15 @@ if(process.env.LC_SCREENSHOT_DIR)await page.screenshot({path:process.env.LC_SCRE
 await page.getByRole('button',{name:'查看图片结果：另一个结果.png',exact:true}).click();
 await page.locator('.image-result-stage img').evaluate(img=>new Promise(resolve=>{if(img.complete&&img.naturalWidth)resolve();else img.onload=resolve}));
 assert.equal(await page.locator('.image-result-caption>span').textContent(),'另一个结果.png');
+const popupPromise=page.waitForEvent('popup');
+await page.getByRole('link',{name:'在新窗口按原尺寸查看：另一个结果.png',exact:true}).click();
+const popup=await popupPromise;await popup.waitForFunction(()=>document.querySelector('img')?.naturalWidth>0);
+await popup.setViewportSize({width:320,height:240});
+const native=await popup.evaluate(async()=>{const image=document.querySelector('img'),rect=image.getBoundingClientRect();return {natural:[image.naturalWidth,image.naturalHeight],rendered:[rect.width,rect.height],bytes:[...new Uint8Array(await fetch(image.src).then(r=>r.arrayBuffer()))],openerIsNull:window.opener===null}});
+assert.deepEqual(native.natural,[640,800]);assert.deepEqual(native.rendered,native.natural);assert.equal(native.openerIsNull,true);
+assert.deepEqual(native.bytes,await page.evaluate(async()=>[...new Uint8Array(await window.historyFiles.get('assets/result2').arrayBuffer())]));
+await popup.close();
+
 assert.equal(await page.locator('.lc-reader .generation-references figcaption').textContent(),'兔子参考.png');
 assert.equal(await page.locator('.generation-prompt').textContent(),'请按照参考图生成一只兔子');
 assert.ok((await page.locator('.image-result-facts').textContent()).includes('440'));assert.ok((await page.locator('.image-result-facts').textContent()).includes('USD 0.1235'));
@@ -49,5 +58,5 @@ await page.reload();await page.getByRole('button',{name:'选择数据文件夹',
 await page.getByRole('button',{name:'生图历史',exact:true}).click();await page.locator('.history-result').first().waitFor();
 assert.equal(await page.locator('.history-result').count(),2);assert.equal(await page.evaluate(()=>window.historyFiles.has('assets/ref')&&window.historyFiles.has('assets/original')),true);
 await page.setViewportSize({width:600,height:850});await page.locator('.history-result img').first().evaluate(img=>new Promise(resolve=>{if(img.complete&&img.naturalWidth)resolve();else img.onload=resolve}));await page.evaluate(async()=>{await Promise.all([...document.querySelectorAll('.history-result img,.image-result-stage img,.generation-references img')].filter(i=>i.src).map(i=>i.decode().catch(()=>{})));await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))});
-if(process.env.LC_SCREENSHOT_DIR)await page.screenshot({path:process.env.LC_SCREENSHOT_DIR+'/history-narrow.png'});assert.deepEqual(errors,[]);console.log('Image gallery and viewer: image-only grid, scoped history, exact image selection, prompt/references, usage, responsive layout, back navigation, deletion/reload and cleanup passed');
+if(process.env.LC_SCREENSHOT_DIR)await page.screenshot({path:process.env.LC_SCREENSHOT_DIR+'/history-narrow.png'});assert.deepEqual(errors,[]);console.log('Image gallery and viewer passed, including native-size popup dimensions and exact original bytes.');
 }finally{await browser.close()}

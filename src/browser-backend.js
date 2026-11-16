@@ -101,8 +101,25 @@
     const anchor=event.target.closest?.('a[href^="#lc-asset="]'); if(!anchor)return;
     event.preventDefault();event.stopPropagation();
     const id=decodeURIComponent(anchor.getAttribute('href').slice(10));
-    const popup=anchor.hasAttribute('download')?null:window.open('about:blank','_blank');
+    const naturalSize=anchor.dataset.originalSize==='true';
+    const popup=anchor.hasAttribute('download')?null:window.open('about:blank','_blank',naturalSize?'popup,width=1100,height=850':undefined);
+    if(!anchor.hasAttribute('download')&&!popup){alert('浏览器阻止了新窗口，请允许此页面打开弹出窗口。');return;}
     try {
+      if(naturalSize) {
+        const blob=await loadAsset(id);
+        if(popup.closed)return;
+        popup.opener=null;
+        const doc=popup.document;
+        doc.title=state.asset[id]?.name||'原尺寸图片';
+        const meta=doc.createElement('meta');meta.name='viewport';meta.content='width=device-width, initial-scale=1';doc.head.append(meta);
+        doc.documentElement.style.cssText='background:#202020;color-scheme:dark;';
+        doc.body.style.cssText='margin:0;min-width:max-content;min-height:100vh;';
+        const img=doc.createElement('img');img.alt=doc.title;
+        img.style.cssText='display:block;max-width:none;max-height:none;width:auto;height:auto;margin:0 auto;';
+        img.src=popup.URL.createObjectURL(blob);
+        doc.body.replaceChildren(img);
+        return;
+      }
       const lease=await acquireImage(id,true);
       if(anchor.hasAttribute('download')) {const a=document.createElement('a');a.href=lease.url;a.download=anchor.download||state.asset[id]?.name||'image';a.click();}
       else if(popup)popup.location.href=lease.url;
