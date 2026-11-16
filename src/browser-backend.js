@@ -144,21 +144,41 @@
       }
       await save();
     }
-    await saveHandle(folder).catch(()=>{});
     gate.hidden = true; readyResolve();
+    // Remembering a folder is optional: browser storage must not block opening it.
+    saveHandle(folder).catch(()=>{});
   }
   async function startMemory() {
+    folder=null;assetFolder=null;thumbnailFolder=undefined;
     state = clone(seed.state);
     for (const [id,b64] of Object.entries(seed.assets)) memoryAssets.set(id,new Blob([b64ToBytes(b64)],{type:state.asset[id]?.mime || 'application/octet-stream'}));
     gate.hidden = true; readyResolve();
   }
+  let choosingFolder=false;
   pickButton.addEventListener('click', async () => {
+    if(choosingFolder)return;
+    choosingFolder=true;pickButton.disabled=true;
+    let phase='select';
     try {
       if (!window.showDirectoryPicker) { status.textContent = '此浏览器不能直接保存到文件夹。请用最新版 Chrome 或 Edge 打开。'; return; }
-      status.textContent = '正在连接文件夹并导入现有画布…';
+      status.textContent = '请在弹出窗口中选择 data 文件夹，并允许浏览器查看和编辑。';
       const handle = await showDirectoryPicker({id:'light-canvas-data',mode:'readwrite'});
+      phase='permission';
+      if(typeof handle.queryPermission==='function'&&typeof handle.requestPermission==='function') {
+        if(await handle.queryPermission({mode:'readwrite'})!=='granted') {
+          status.textContent='已选中文件夹，请在浏览器提示中允许查看和编辑文件。';
+          if(await handle.requestPermission({mode:'readwrite'})!=='granted')throw new DOMException('未取得所选文件夹的读写权限','NotAllowedError');
+        }
+      }
+      phase='write';status.textContent=`已选择 ${handle.name}，正在准备画布数据…`;
       await installFolder(handle);
-    } catch (e) { status.textContent = e.name === 'AbortError' ? '尚未选择文件夹。' : `连接失败：${e.message}`; }
+    } catch (e) {
+      const code=e.name||'Error';
+      if(code==='AbortError'&&phase!=='write')status.textContent='未完成文件夹选择或读写授权。请重新选择 data，点击“选择文件夹”，再允许浏览器查看和编辑。';
+      else if(code==='NotAllowedError')status.textContent='没有取得文件夹的读写权限。请重新选择 data 并允许查看和编辑；若没有授权提示，请检查浏览器是否禁止文件访问。';
+      else if(code==='SecurityError')status.textContent='浏览器阻止了文件夹访问。请用本机 Chrome 或 Edge 打开 index.html，再点击“选择数据文件夹”。';
+      else status.textContent=`${phase==='write'?'文件夹已选中，但创建或读取数据失败':'连接文件夹失败'}：${e.message||code}（${code}）`;
+    } finally {choosingFolder=false;pickButton.disabled=false;}
   });
   downloadButton.addEventListener('click', async () => { await startMemory(); alert('当前为临时使用。保存新内容时，请在设置中下载完整备份。'); });
   importButton.addEventListener('click', () => importInput.click());
