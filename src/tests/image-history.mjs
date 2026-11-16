@@ -36,6 +36,11 @@ const native=await popup.evaluate(async()=>{const image=document.querySelector('
 assert.deepEqual(native.natural,[640,800]);assert.deepEqual(native.rendered,native.natural);assert.equal(native.openerIsNull,true);
 assert.deepEqual(native.bytes,await page.evaluate(async()=>[...new Uint8Array(await window.historyFiles.get('assets/result2').arrayBuffer())]));
 await popup.close();
+await page.locator('.generation-prompt').click();assert.equal(await page.locator('.lc-reader').isVisible(),true,'inside clicks keep the viewer open');
+const heading=await page.locator('.lc-reader-heading').boundingBox();await page.mouse.move(heading.x+10,heading.y+10);await page.mouse.down();await page.mouse.move(8,8,{steps:6});await page.mouse.up();assert.equal(await page.locator('.lc-reader').isVisible(),true,'dragging from inside does not close the viewer');
+await page.mouse.click(8,8);await page.locator('.image-history-grid').waitFor();assert.equal(await page.locator('.lc-reader').count(),0,'outside click closes the viewer and returns to history');
+await page.getByRole('button',{name:'查看图片结果：另一个结果.png',exact:true}).click();await page.locator('.generation-prompt').waitFor();
+
 
 assert.equal(await page.locator('.lc-reader .generation-references figcaption').textContent(),'兔子参考.png');
 assert.equal(await page.locator('.generation-prompt').textContent(),'请按照参考图生成一只兔子');
@@ -58,5 +63,5 @@ await page.reload();await page.getByRole('button',{name:'选择数据文件夹',
 await page.getByRole('button',{name:'生图历史',exact:true}).click();await page.locator('.history-result').first().waitFor();
 assert.equal(await page.locator('.history-result').count(),2);assert.equal(await page.evaluate(()=>window.historyFiles.has('assets/ref')&&window.historyFiles.has('assets/original')),true);
 await page.setViewportSize({width:600,height:850});await page.locator('.history-result img').first().evaluate(img=>new Promise(resolve=>{if(img.complete&&img.naturalWidth)resolve();else img.onload=resolve}));await page.evaluate(async()=>{await Promise.all([...document.querySelectorAll('.history-result img,.image-result-stage img,.generation-references img')].filter(i=>i.src).map(i=>i.decode().catch(()=>{})));await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))});
-if(process.env.LC_SCREENSHOT_DIR)await page.screenshot({path:process.env.LC_SCREENSHOT_DIR+'/history-narrow.png'});assert.deepEqual(errors,[]);console.log('Image gallery and viewer passed, including native-size popup dimensions and exact original bytes.');
+if(process.env.LC_SCREENSHOT_DIR)await page.screenshot({path:process.env.LC_SCREENSHOT_DIR+'/history-narrow.png'});assert.deepEqual(errors,[]);console.log('Image gallery and viewer passed, including outside-click closing, inside-click/drag safety, native-size popup dimensions and exact original bytes.');
 }finally{await browser.close()}
