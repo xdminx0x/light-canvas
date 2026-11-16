@@ -228,7 +228,7 @@
     const excluded=new Set(d.excludedImageIds||[]);
     const ids=new Set(), messages=[], sources=[]; const byId=id=>w.nodes.find(x=>x.id===id);
     const add=(role,text,assets=[],source)=>{for(const id of assets){assert(state.asset[id],'上下文引用的图片不存在');ids.add(id)} if(text||assets.length)messages.push({role,content:text||'',...(assets.length?{assetIds:[...assets]}:{})});if(source&&!sources.includes(source))sources.push(source)};
-    const body=node=>{const r=state.run[node?.data?.runId];return {text:r?r.text:node?.data?.prompt||'',assetIds:r?r.assetIds:node?.data?.assetIds||[]}};
+    const body=node=>{const r=state.run[node?.data?.runId];return {text:r?r.text:node?.data?.prompt||'',assetIds:window.LightCanvasImages.idsOf(node,state.run)}};
     const seen=new Set();function history(input){if(seen.has(input.id))throw Error('对话连线包含循环');seen.add(input.id);const e=w.edges.find(x=>x.target===input.id&&x.data?.kind==='history');if(e){const result=byId(e.source);if(result){const gen=w.edges.find(x=>x.target===result.id&&x.data?.kind==='generation');const previous=gen&&byId(gen.source);if(previous?.data.kind==='input'){history(previous);const r=state.run[result.data.runId],snap=r?.snapshot;add('user',snap?.transmittedPrompt??snap?.currentPrompt??(previous.data.prompt||''),snap?.currentAssetIds||previous.data.assetIds||[],previous.id)}const b=body(result);add('assistant',b.text,b.assetIds,result.id)}}seen.delete(input.id)}
     if(d.systemPrompt)add('system',d.systemPrompt);
     if(d.mode!=='image') history(n);
@@ -282,7 +282,7 @@
     try{
       const s=run.snapshot;if(p.protocol==='mock'){
         if(s.mode==='chat')run.text=`本地演示 · 未调用外部 API\n\n${s.currentPrompt}`;
-        else {const canvas=document.createElement('canvas');const [w,h]=(s.imageDelivery?.apiSize||'256x256').split('x').map(Number);canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.fillStyle='#e5e7eb';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#333';ctx.font='18px sans-serif';ctx.fillText('Light Canvas',52,128);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));const detail=await renderImage(blob,s.imageDelivery,0);run.assetIds.push(detail.finalAssetId);run.imageDelivery=[detail]}
+        else {for(let index=0;index<(s.request?.n||s.request?.params?.n||1);index++){const canvas=document.createElement('canvas');const [w,h]=(s.imageDelivery?.apiSize||'256x256').split('x').map(Number);canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.fillStyle='#e5e7eb';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#333';ctx.font='18px sans-serif';ctx.fillText('Light Canvas',52,128);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));const detail=await renderImage(blob,s.imageDelivery,index);run.assetIds.push(detail.finalAssetId);(run.outputAssets||={})[index]=detail.finalAssetId;(run.imageDelivery||=[]).push(detail)}}
       }else{
         assert(key,'此接口尚未配置 API 密钥');let payload=s.request,body,headers={Accept:'application/json',Authorization:`Bearer ${key}`};
         if(s.transport==='multipart'){const form=new FormData();for(const [name,value] of Object.entries(payload))if(name!=='images')form.append(name,String(value));for(const image of payload.images){const blob=await loadAsset(image.assetId);form.append(payload.images.length===1?'image':'image[]',blob,image.name)}body=form}
@@ -290,7 +290,7 @@
         const res=await nativeFetch(s.endpoint,{method:'POST',headers,body,signal:controller.signal});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(`API 返回 ${res.status}：${data.error?.message||data.message||'请检查模型和参数'}`);
         if(s.mode==='image'){
           assert(Array.isArray(data.data)&&data.data.length,'图片 API 没有返回图片');run.imageDelivery=[];
-          for(const [i,item] of data.data.entries()){let blob;if(item.b64_json)blob=new Blob([b64ToBytes(item.b64_json)],{type:'image/png'});else if(item.url){const remote=await nativeFetch(item.url);assert(remote.ok,'无法下载 API 返回的图片');blob=await remote.blob()}else throw Error('图片 API 返回内容无效');const detail=await renderImage(blob,s.imageDelivery,i);run.assetIds.push(detail.finalAssetId);run.imageDelivery.push(detail);emitRun(run)}
+          for(const [i,item] of data.data.entries()){let blob;if(item.b64_json)blob=new Blob([b64ToBytes(item.b64_json)],{type:'image/png'});else if(item.url){const remote=await nativeFetch(item.url);assert(remote.ok,'无法下载 API 返回的图片');blob=await remote.blob()}else throw Error('图片 API 返回内容无效');const detail=await renderImage(blob,s.imageDelivery,i);run.assetIds.push(detail.finalAssetId);(run.outputAssets||={})[i]=detail.finalAssetId;run.imageDelivery.push(detail);emitRun(run)}
         }else if(s.protocol==='chat-completions')run.text=data.choices?.[0]?.message?.content||'';
         else run.text=data.output_text||data.output?.flatMap(item=>item.content||[]).filter(x=>x.type==='output_text').map(x=>x.text).join('')||'';
         run.usage=data.usage||null;
@@ -341,7 +341,7 @@
         const cleaned=strip(w);
         const labels=Object.entries(w.imageLabels||{}).filter(([id])=>ids.has(id)).map(([,label])=>label);
         for(const n of cleaned.nodes)if(n.data?.prompt)for(const label of labels){const digits=/^图(\d+)$/.exec(label)?.[1];if(digits)n.data.prompt=n.data.prompt.replace(new RegExp('@(?:图片|图)'+digits+'(?!\\d)','g'),'');}
-        cleaned.nodes=cleaned.nodes.filter(n=>!removedRuns.has(n.data?.runId)&&!(n.data?.kind==='image'&&!n.data.runId&&w.nodes.find(old=>old.id===n.id)?.data?.assetIds?.some(id=>ids.has(id))&&!n.data.assetIds?.length));
+        cleaned.nodes=cleaned.nodes.filter(n=>!(Number.isInteger(n.data?.resultIndex)&&n.data?.runId&&window.LightCanvasImages.idsOf(n,before.run).some(id=>ids.has(id)))&&!removedRuns.has(n.data?.runId)&&!(n.data?.kind==='image'&&!n.data.runId&&w.nodes.find(old=>old.id===n.id)?.data?.assetIds?.some(id=>ids.has(id))&&!n.data.assetIds?.length));
         const nodeIds=new Set(cleaned.nodes.map(n=>n.id));cleaned.edges=cleaned.edges.filter(edge=>nodeIds.has(edge.source)&&nodeIds.has(edge.target));
         cleaned.version=(w.version||0)+1;cleaned.updatedAt=now();state.workspace[id]=cleaned;
       }

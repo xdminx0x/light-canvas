@@ -30,6 +30,7 @@ try{
  await page.goto(pathToFileURL(process.argv[2]||fileURLToPath(new URL('../../index.html',import.meta.url))).href);
  await page.getByRole('button',{name:'临时打开',exact:true}).click();await page.locator('.app-shell').waitFor();
  await page.getByRole('button',{name:'新建画布',exact:true}).first().click();await page.waitForFunction(()=>document.querySelectorAll('.prompt-input').length===0);
+ await page.getByRole('button',{name:'画布操作',exact:true}).click();
  await page.getByRole('button',{name:'新建输入',exact:true}).first().click();
  const field=page.getByRole('textbox',{name:'提示词',exact:true});await field.fill('用于多图引用');
  await page.waitForTimeout(750);

@@ -34,6 +34,7 @@ try{
  await page.locator('.app-shell').waitFor();
  await page.getByRole('button',{name:'新建画布',exact:true}).first().click();
  await page.waitForFunction(()=>document.querySelectorAll('.prompt-input').length===0);
+ await page.getByRole('button',{name:'画布操作',exact:true}).click();
  await page.getByRole('button',{name:'新建输入',exact:true}).first().click();
  const field=page.getByRole('textbox',{name:'提示词',exact:true}).first();await field.fill('向右排列测试');
  await page.locator('details.node-configuration').first().evaluate(e=>e.open=true);
@@ -55,12 +56,15 @@ try{
  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+130,box.y+box.height/2+20,{steps:12});await page.mouse.up();await page.waitForTimeout(800);
  await page.locator('.canvas-container').focus();await page.keyboard.press('Escape');await page.waitForTimeout(750);
  const before=await page.evaluate(id=>window.__lcBackend.getState().workspace[id].nodes.map(n=>({id:n.id,position:n.position})),workspace.id);
- await page.getByRole('button',{name:'自动对齐',exact:true}).click();await page.waitForTimeout(950);
+ await page.getByRole('button',{name:'画布操作',exact:true}).click();
+ await page.getByRole('button',{name:'整理布局',exact:true}).click();await page.waitForTimeout(950);
  const after=await page.evaluate(id=>window.__lcBackend.getState().workspace[id].nodes.map(n=>({id:n.id,position:n.position})),workspace.id);
  assert.notEqual(JSON.stringify(before),JSON.stringify(after));
  const centers=await page.evaluate(id=>window.__lcBackend.getState().workspace[id].nodes.map(n=>n.position.y+(n.measured?.height||n.height||420)/2),workspace.id);assert.ok(Math.max(...centers)-Math.min(...centers)<1);
+ await page.getByRole('button',{name:'画布操作',exact:true}).click();
  await page.getByRole('button',{name:'撤销',exact:true}).click();await page.waitForTimeout(800);
  assert.deepEqual(await page.evaluate(id=>window.__lcBackend.getState().workspace[id].nodes.map(n=>({id:n.id,position:n.position})),workspace.id),before);
+ await page.getByRole('button',{name:'画布操作',exact:true}).click();
  await page.getByRole('button',{name:'重做',exact:true}).click();await page.waitForTimeout(800);
  assert.deepEqual(await page.evaluate(id=>window.__lcBackend.getState().workspace[id].nodes.map(n=>({id:n.id,position:n.position})),workspace.id),after);
  assert.equal(external,0);assert.deepEqual(errors,[]);

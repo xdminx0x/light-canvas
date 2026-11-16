@@ -1,6 +1,12 @@
 /* Shared, deterministic image numbering. No model calls and no prompt polishing. */
 window.LightCanvasImages=(()=>{
-  const idsOf=(node,runs)=>node?.data?.runId?(runs[node.data.runId]?.assetIds||[]):(node?.data?.assetIds||[]);
+  const idsOf=(node,runs)=>{
+    if(!node?.data?.runId)return node?.data?.assetIds||[];
+    const run=runs[node.data.runId],ids=run?.assetIds||[];
+    if(!Number.isInteger(node.data.resultIndex))return ids;
+    const id=run?.outputAssets?run.outputAssets[node.data.resultIndex]:ids[node.data.resultIndex];
+    return id&&ids.includes(id)?[id]:[];
+  };
   function assign(workspace,runs={}){
     const imageLabels={...(workspace.imageLabels||{})};
     let next=Math.max(0,...Object.values(imageLabels).map(label=>Number(/^图(\d+)$/.exec(label)?.[1])||0))+1;
