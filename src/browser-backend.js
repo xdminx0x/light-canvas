@@ -12,6 +12,7 @@
   const importButton = document.getElementById('import-data');
   const importInput = document.getElementById('import-file');
   let state, folder, assetFolder, active = new Map(), urls = new Map(), memoryAssets = new Map();
+  const deletingAssets = new Set();
   let readyResolve;
   const ready = new Promise(resolve => { readyResolve = resolve; });
   const eventBus = new EventTarget();
@@ -34,6 +35,7 @@
   let saveChain = Promise.resolve();
   function save() { if (!folder) return Promise.resolve(); saveChain = saveChain.catch(()=>{}).then(async () => { const file = await folder.getFileHandle('canvas.json', {create:true}); await writeFile(file, JSON.stringify(state)); }); return saveChain; }
   async function loadAsset(id) {
+    assert(!deletingAssets.has(id), "图片正在删除");
     if (memoryAssets.has(id)) return memoryAssets.get(id);
     if (!assetFolder) throw new Error('图片文件夹未连接');
     const file = await assetFolder.getFileHandle(id).then(h => h.getFile());
@@ -78,6 +80,7 @@
     }
   }
   async function acquireImage(id,original=false) {
+    assert(!deletingAssets.has(id), "图片正在删除");
     const key=(original?'original:':'thumb:')+id;
     if(!imageCache.has(key)) {
       if(!imagePending.has(key)) imagePending.set(key,(async()=>{
@@ -246,6 +249,65 @@
     }catch(e){if(run.status!=='cancelled'){run.status='failed';run.error=e.name==='AbortError'?'已停止请求':escapeKey(e);emitRun(run)}}finally{active.delete(run.id)}
   }
   async function backup(){const zip=new JSZip();zip.file('canvas.json',JSON.stringify(state));for(const id of Object.keys(state.asset))zip.file(`assets/${id}`,await loadAsset(id));return zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:1}})}
+  async function deleteGeneratedImage(runId, assetId) {
+    const run=state.run[runId];
+    assert(run?.mode==='image' && run.assetIds?.includes(assetId),'图片已删除或不是生成结果');
+    assert(!active.size && !all('run').some(r=>r.status==='queued'||r.status==='running'),'请等待正在运行的任务结束，或停止任务后再永久删除图片');
+    const detail=run.imageDelivery?.find(item=>item.finalAssetId===assetId||item.originalAssetId===assetId);
+    const ids=new Set([assetId,detail?.originalAssetId,detail?.finalAssetId].filter(Boolean));
+    assert(![...ids].some(id=>deletingAssets.has(id)),'图片正在删除，请稍候');
+    for(const id of ids)deletingAssets.add(id);
+    const copies=[];let before;
+    try {
+      await saveChain;
+      await Promise.all([...imagePending].filter(([key])=>ids.has(key.slice(key.indexOf(':')+1))).map(([,promise])=>promise.catch(()=>{})));
+      for(const id of ids)for(const [directory,name] of [[assetFolder,id],[thumbnailFolder,id+'.webp']])if(directory) {
+        try { const file=await directory.getFileHandle(name);copies.push({directory,name,blob:await file.getFile()}); }
+        catch(error){if(error.name!=='NotFoundError')throw error;}
+      }
+      for(const copy of copies)await copy.directory.removeEntry(copy.name);
+      before=clone(state);
+      const matches=value=>typeof value==='string'&&(ids.has(value)||[...ids].some(id=>value===`/api/assets/${id}`||value===`#lc-asset=${encodeURIComponent(id)}`));
+      const strip=value=>{
+        if(matches(value))return undefined;
+        if(Array.isArray(value))return value.map(strip).filter(item=>item!==undefined);
+        if(value&&typeof value==='object') {
+          if(ids.has(value.assetId)||ids.has(value.id))return undefined;
+          return Object.fromEntries(Object.entries(value).filter(([key])=>!ids.has(key)).map(([key,item])=>[key,strip(item)]).filter(([,item])=>item!==undefined));
+        }
+        return value;
+      };
+      const removedRuns=new Set();
+      for(const [id,r] of Object.entries(state.run)) {
+        const affected=(r.assetIds||[]).some(id=>ids.has(id));
+        const cleaned=strip(r);
+        if(r.imageDelivery)cleaned.imageDelivery=r.imageDelivery.filter(item=>!ids.has(item.originalAssetId)&&!ids.has(item.finalAssetId)).map(strip);
+        if(affected&&!(cleaned.assetIds||[]).length){delete state.run[id];removedRuns.add(id);}
+        else state.run[id]=cleaned;
+      }
+      for(const [id,w] of Object.entries(state.workspace)) {
+        const cleaned=strip(w);
+        const labels=Object.entries(w.imageLabels||{}).filter(([id])=>ids.has(id)).map(([,label])=>label);
+        for(const n of cleaned.nodes)if(n.data?.prompt)for(const label of labels){const digits=/^图(\d+)$/.exec(label)?.[1];if(digits)n.data.prompt=n.data.prompt.replace(new RegExp('@(?:图片|图)'+digits+'(?!\\d)','g'),'');}
+        cleaned.nodes=cleaned.nodes.filter(n=>!removedRuns.has(n.data?.runId)&&!(n.data?.kind==='image'&&!n.data.runId&&w.nodes.find(old=>old.id===n.id)?.data?.assetIds?.some(id=>ids.has(id))&&!n.data.assetIds?.length));
+        const nodeIds=new Set(cleaned.nodes.map(n=>n.id));cleaned.edges=cleaned.edges.filter(edge=>nodeIds.has(edge.source)&&nodeIds.has(edge.target));
+        cleaned.version=(w.version||0)+1;cleaned.updatedAt=now();state.workspace[id]=cleaned;
+      }
+      for(const id of removedRuns)delete state.preferences['reader:'+id];
+      for(const id of ids)delete state.asset[id];
+      await save();
+      for(const id of ids){memoryAssets.delete(id);URL.revokeObjectURL(urls.get(id));urls.delete(id);for(const key of ['thumb:'+id,'original:'+id]){const entry=imageCache.get(key);if(entry)URL.revokeObjectURL(entry.url);imageCache.delete(key);}}
+      return {ok:true,removedAssetCount:ids.size,removedRunCount:removedRuns.size};
+    } catch(error) {
+      if(before)state=before;
+      let rollbackError;
+      for(const copy of copies)try{await writeFile(await copy.directory.getFileHandle(copy.name,{create:true}),copy.blob)}catch(e){rollbackError=e;}
+      if(before)try{await save()}catch(e){rollbackError=e;}
+      if(rollbackError)throw Error('删除未能完成，恢复文件失败，请检查数据文件夹的写入权限后重试。');
+      throw error;
+    } finally {for(const id of ids)deletingAssets.delete(id);}
+  }
+
   async function route(url,options={}){
     await ready;const path=String(url).startsWith('/api/')?String(url).split('?')[0]:new URL(url,location.href).pathname,method=(options.method||'GET').toUpperCase();let b={};if(typeof options.body==='string')try{b=JSON.parse(options.body)}catch{}
     if(path==='/api/bootstrap'){for(const w of all('workspace'))state.workspace[w.id]=window.LightCanvasImages.assign(w,state.run);return response({version:'__LC_APP_VERSION__-html',dataDir:folder?.name||'临时使用',token:'local-file',workspaces:all('workspace'),providers:all('provider').map(publicProvider),runs:all('run'),assets:all('asset')});}
@@ -257,6 +319,7 @@
     if(m=/^\/api\/providers\/([^/]+)$/.exec(path)){const id=m[1];if(method==='PUT'){if(b.clearKey)delete state.keys[id];if(b.apiKey)state.keys[id]=b.apiKey;delete b.apiKey;delete b.clearKey;state.provider[id]=b;await save();return response(publicProvider(b))}if(method==='DELETE'){delete state.provider[id];delete state.keys[id];await save();return response({ok:true})}}
     if(path==='/api/assets'&&method==='POST'){assert(b.base64,'图片数据为空');return response(await addAsset(new Blob([b64ToBytes(b.base64)],{type:b.mime||'image/png'}),b.name,b.mime),201)}
     if(m=/^\/api\/assets\/([^/]+)$/.exec(path))return new Response(await loadAsset(m[1]),{headers:{'Content-Type':state.asset[m[1]]?.mime||'application/octet-stream'}});
+    if(m=/^\/api\/runs\/([^/]+)\/images\/([^/]+)$/.exec(path)) {assert(method==='DELETE','仅支持永久删除请求');return response(await deleteGeneratedImage(decodeURIComponent(m[1]),decodeURIComponent(m[2])));}
     if(path==='/api/preview'&&method==='POST')return response(context(b.workspaceId,b.nodeId));
     if(path==='/api/runs'&&method==='POST'){if(state.run[b.id])return response(state.run[b.id]);const snap=context(b.workspaceId,b.nodeId);const run={id:b.id,workspaceId:b.workspaceId,inputNodeId:b.nodeId,mode:snap.mode,status:'queued',text:'',assetIds:[],createdAt:now(),updatedAt:now(),model:snap.model,providerName:snap.providerName,usage:null,cost:null,currency:snap.currency,snapshot:snap,seq:1};state.run[run.id]=run;await save();queueMicrotask(()=>runJob(run));return response(run,201)}
     if(m=/^\/api\/runs\/([^/]+)\/cancel$/.exec(path)){const r=state.run[m[1]];assert(r,'任务不存在');r.status='cancelled';r.error='已停止本地等待，并尝试取消上游请求。';active.get(r.id)?.abort();emitRun(r);return response(r)}

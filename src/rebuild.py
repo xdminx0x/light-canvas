@@ -1,7 +1,7 @@
 """Rebuild the self-contained Light Canvas HTML from this package's editable sources.
 
 Requires Python 3 only. Run from any working directory:
-    python source/rebuild.py
+    python src/rebuild.py
 
 The current HTML supplies the initial, user-owned seed data. Never print its keys.
 """
@@ -11,12 +11,12 @@ import json
 
 root = Path(__file__).resolve().parent.parent
 source = Path(__file__).resolve().parent
-output = root / '轻画布.html'
+output = root / 'index.html'
 version = json.loads((source / 'package.json').read_text(encoding='utf-8'))['version']
 old = output.read_text(encoding='utf-8')
 match = re.search(r'<script id="lc-seed" type="application/json">(.*?)</script>', old, re.S)
 if not match:
-    raise SystemExit('Existing 轻画布.html is required to preserve initial data and API settings.')
+    raise SystemExit('Existing index.html is required to preserve initial data and API settings.')
 seed = match.group(1)
 client = (source / 'client-readable.js').read_text(encoding='utf-8')
 client = client.replace('location.pathname.match(/^\\/reader\\/([^/]+)$/)', 'location.hash.match(/^#reader=([^/]+)$/)')

@@ -10,7 +10,7 @@ try {
   const dir=(prefix='')=>({name:'Test',getDirectoryHandle:async n=>dir(prefix+n+'/'),getFileHandle:async(n,o={})=>{const k=prefix+n;if(!o.create&&!files.has(k))throw Error('missing');return {getFile:async()=>{if(k.startsWith('assets/'))window.assetReads++;return files.get(k)},createWritable:async()=>({write:async d=>files.set(k,new Blob([d])),close:async()=>{}})}},removeEntry:async n=>files.delete(prefix+n)});
   window.showDirectoryPicker=async()=>dir();
  });
- await page.goto(pathToFileURL(process.argv[2]||fileURLToPath(new URL('../../轻画布.html',import.meta.url))).href);
+ await page.goto(pathToFileURL(process.argv[2]||fileURLToPath(new URL('../../index.html',import.meta.url))).href);
  await page.evaluate(async()=>{
   const state={format:'light-canvas-html-v1',workspace:{},provider:{},run:{},asset:{one:{id:'one',mime:'image/png',name:'original.png'}},keys:{},envKeys:{},preferences:{}};
   window.testFiles.set('canvas.json',new Blob([JSON.stringify(state)]));

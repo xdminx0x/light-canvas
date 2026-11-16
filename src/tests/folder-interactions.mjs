@@ -11,7 +11,7 @@ await page.addInitScript(()=>{
  const dir=(prefix='')=>({name:'Test Data',queryPermission:async()=> 'granted',getDirectoryHandle:async name=>dir(prefix+name+'/'),getFileHandle:async(name,options={})=>{const key=prefix+name;if(!options.create&&!files.has(key))throw new Error('not found');return {createWritable:async()=>{let chunks=[];return {write:async data=>{await new Promise(r=>setTimeout(r,75));chunks.push(data)},close:async()=>files.set(key,new Blob(chunks))}},getFile:async()=>files.get(key)}},removeEntry:async name=>files.delete(prefix+name)});
  window.showDirectoryPicker=async()=>dir();
 });
-await page.goto(pathToFileURL(path.resolve(process.argv[2]||fileURLToPath(new URL('../../轻画布.html',import.meta.url)))).href);
+await page.goto(pathToFileURL(path.resolve(process.argv[2]||fileURLToPath(new URL('../../index.html',import.meta.url)))).href);
 await page.getByRole('button',{name:'选择数据文件夹',exact:true}).click();
 await page.locator('.app-shell').waitFor();
 await page.getByRole('button',{name:'新建画布',exact:true}).first().click();

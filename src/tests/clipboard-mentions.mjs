@@ -27,7 +27,7 @@ try{
    if(request.url().endsWith('/chat/completions'))return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify({choices:[{message:{content:'test reply'}}]})});
    return route.abort();
  });
- await page.goto(pathToFileURL(process.argv[2]||fileURLToPath(new URL('../../轻画布.html',import.meta.url))).href);
+ await page.goto(pathToFileURL(process.argv[2]||fileURLToPath(new URL('../../index.html',import.meta.url))).href);
  await page.getByRole('button',{name:'临时打开',exact:true}).click();await page.locator('.app-shell').waitFor();
  await page.getByRole('button',{name:'新建画布',exact:true}).first().click();await page.waitForFunction(()=>document.querySelectorAll('.prompt-input').length===0);
  await page.getByRole('button',{name:'新建输入',exact:true}).first().click();

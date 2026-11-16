@@ -2,7 +2,7 @@ const {chromium}=await import(process.env.LC_PLAYWRIGHT || 'playwright');
 import {pathToFileURL,fileURLToPath} from 'node:url';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-const file=process.argv[2]||fileURLToPath(new URL('../../轻画布.html',import.meta.url));
+const file=process.argv[2]||fileURLToPath(new URL('../../index.html',import.meta.url));
 const browser=await chromium.launch({executablePath:process.env.LC_BROWSER || undefined,headless:true});
 try {
 const page=await browser.newPage({viewport:{width:1440,height:960}});const errors=[];let external=0;

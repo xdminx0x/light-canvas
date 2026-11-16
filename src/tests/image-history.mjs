@@ -10,7 +10,7 @@ await page.addInitScript(()=>{
  const dir=(prefix='')=>({name:'data',queryPermission:async()=> 'granted',getDirectoryHandle:async name=>dir(prefix+name+'/'),getFileHandle:async(name,opts={})=>{const key=prefix+name;if(!opts.create&&!files.has(key))throw Error('missing');return {getFile:async()=>files.get(key),createWritable:async()=>({write:async value=>files.set(key,new Blob([value])),close:async()=>{}})}},removeEntry:async name=>files.delete(prefix+name)});
  window.showDirectoryPicker=async()=>dir();
 });
-await page.goto(pathToFileURL(fileURLToPath(new URL('../../轻画布.html',import.meta.url))).href);
+await page.goto(pathToFileURL(fileURLToPath(new URL('../../index.html',import.meta.url))).href);
 await page.evaluate(async()=>{
  const c=document.createElement('canvas');c.width=640;c.height=800;const ctx=c.getContext('2d');const sky=ctx.createLinearGradient(0,0,0,800);sky.addColorStop(0,'#344a64');sky.addColorStop(1,'#d7c2a6');ctx.fillStyle=sky;ctx.fillRect(0,0,640,800);ctx.fillStyle='#f3e4c8';ctx.beginPath();ctx.arc(400,205,60,0,Math.PI*2);ctx.fill();ctx.fillStyle='#384b4d';ctx.beginPath();ctx.moveTo(0,610);ctx.lineTo(190,340);ctx.lineTo(450,700);ctx.lineTo(640,480);ctx.lineTo(640,800);ctx.lineTo(0,800);ctx.fill();const blob=await new Promise(r=>c.toBlob(r));
  for(const id of ['ref','result','original','result2'])window.historyFiles.set('assets/'+id,blob);

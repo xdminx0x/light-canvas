@@ -1,13 +1,13 @@
 # 轻画布
 
-可双击打开的本地 AI 节点画布。当前版本 2.2.1。
+可双击打开的本地 AI 节点画布。当前版本 2.2.2。
 
 代码仓库：https://github.com/xdminx0x/light-canvas
 
 ## 使用
 
 1. 下载项目或克隆仓库。
-2. 使用 Chrome 或 Edge 打开“轻画布.html”。
+2. 使用 Chrome 或 Edge 打开“index.html”。
 3. 在项目内新建或选择 `data` 文件夹，保存画布、图片与 API 配置。
 4. 在设置里填写这台电脑使用的供应商、模型和 API 密钥。
 
@@ -15,11 +15,11 @@
 
 ## 修改与构建
 
-- 修改源码/client-readable.js、client.css、browser-backend.js 等源码。
+- 修改src/client-readable.js、client.css、browser-backend.js 等源码。
 - 使用 Python 3 执行：
 
 ```sh
-python 源码/rebuild.py
+python src/rebuild.py
 ```
 
 构建无需联网。重新打开 HTML 检查效果，将源码、生成的 HTML 和更新日志一起提交。不要在 HTML 内嵌个人数据或配置。
@@ -29,7 +29,7 @@ python 源码/rebuild.py
 安装 Node.js 和 Python 3，然后：
 
 ```sh
-cd 源码
+cd src
 npm install
 npx playwright install chromium
 npm test
@@ -41,7 +41,7 @@ npm test
 
 先克隆仓库；每次修改前拉取更新，修改后构建、检查并提交推送。API 配置在各台电脑单独填写。需要迁移画布时，另行私下复制数据文件夹；Git 不负责同步画布。
 
-变更记录见“更新日志.md”，实现约束见“AI开发交接.md”。
+变更记录见“CHANGELOG.md”，实现约束见“MAINTENANCE.md”。
 
 ## 鼠标操作
 
@@ -52,4 +52,8 @@ npm test
 
 ## 更新流程
 
-每次更新递增 `源码/package.json` 中的版本号，并更新本说明中的当前版本及 `更新日志.md`；涉及操作或维护变化时同步修改说明。重新构建 HTML、完成检查后，通过 Git/GitHub CLI 提交并推送。用户数据与密钥不得加入 Git。
+每次更新递增 `src/package.json` 中的版本号，并更新本说明中的当前版本及 `CHANGELOG.md`；涉及操作或维护变化时同步修改说明。重新构建 HTML、完成检查后，通过 Git/GitHub CLI 提交并推送。用户数据与密钥不得加入 Git。
+
+## 永久删除历史图片
+
+生图历史中，每张图片右上角的垃圾桶可永久删除该图。确认后会删除原图、调整后的副本、缩略图和对应数据记录，并移除所有画布及历史请求对该图的引用。同一次生成的其他图片会保留；最后一张图片删除后，该次记录也会移除。删除无法撤销，撤销操作不能恢复；外部备份和已下载的副本不受影响。

@@ -29,7 +29,7 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];let external=0;
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  await page.route('https://**',route=>{external++;return route.abort();});
- await page.goto(pathToFileURL(path.resolve(process.argv[2]||fileURLToPath(new URL('../../轻画布.html',import.meta.url)))).href);
+ await page.goto(pathToFileURL(path.resolve(process.argv[2]||fileURLToPath(new URL('../../index.html',import.meta.url)))).href);
  await page.getByRole('button',{name:'临时打开',exact:true}).click();
  await page.locator('.app-shell').waitFor();
  await page.getByRole('button',{name:'新建画布',exact:true}).first().click();
