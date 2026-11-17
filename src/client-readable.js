@@ -19757,7 +19757,7 @@ function zb(e12, i, l, a) {
   return { id: Ta(), type: "canvas", position: i, data: { kind: "input", label: e12 === "image" ? "图片提示词" : "新的提示词", prompt: "", mode: e12, providerId: (o == null ? void 0 : o.id) || "demo", model: (o == null ? void 0 : o.protocol) === "mock" ? e12 === "image" ? "demo-image" : "demo-chat" : (o == null ? void 0 : o.models[0]) || "", systemPrompt: "", params: {}, assetIds: [], ...a } };
 }
 function Em(e12, i, l) {
-  return { id: Ta(), source: e12, target: i, type: "default", pathOptions: { curvature: 0.3 }, data: { kind: l }, label: l === "generation" ? undefined : l === "history" ? "对话" : "引用", markerEnd: { type: "arrowclosed", color: "#999" }, style: { stroke: l === "reference" ? "#888" : "#aaa", strokeWidth: 1.3, strokeDasharray: l === "reference" ? "5 5" : void 0 }, labelStyle: { fill: "#666", fontSize: 11 }, labelBgStyle: { fill: "#f7f7f7" }, interactionWidth: 18 };
+  return { id: Ta(), source: e12, target: i, type: "default", pathOptions: { curvature: 0.3 }, data: { kind: l }, label: l === "generation" ? undefined : l === "history" ? "对话" : "引用", markerEnd: { type: "arrowclosed", color: "#999" }, style: { stroke: l === "generation" ? "#777" : l === "reference" ? "#888" : "#aaa", strokeWidth: l === "generation" ? 1.5 : 1.3, strokeDasharray: l === "reference" ? "5 5" : void 0 }, labelStyle: { fill: "#666", fontSize: 11 }, labelBgStyle: { fill: "#f7f7f7" }, interactionWidth: 18 };
 }
 function Cm(e12, i, l) {
   var s;
@@ -20415,6 +20415,19 @@ function lcSnapGuides({guides,viewport}) {
   const {x,y,zoom}=viewport;
   return b.jsx("svg",{className:"canvas-snap-guides","aria-hidden":true,children:guides.map((g,i)=>b.jsx("line",g.axis==='x'?{x1:g.value*zoom+x,x2:g.value*zoom+x,y1:g.start*zoom+y,y2:g.end*zoom+y}:{y1:g.value*zoom+y,y2:g.value*zoom+y,x1:g.start*zoom+x,x2:g.end*zoom+x},i))});
 }
+function lcCanvasEdge(props) {
+  const {zoom}=HA();
+  return b.jsx(Sv.default,{...props,style:{...props.style,strokeWidth:(props.style?.strokeWidth||1.3)/zoom}});
+}
+const lcCanvasEdgeTypes={default:lcCanvasEdge};
+// The header ports have fixed geometry, including before DOM measurement.
+function lcCanvasFlowNode(node) {
+  const width=lc16NodeSize(node).width;
+  return {...node,type:'canvas',initialWidth:width,sourcePosition:Ie.Right,targetPosition:Ie.Left,dragHandle:'.node-drag-handle',handles:[
+    {id:null,type:'target',position:Ie.Left,x:-4.5,y:20.5,width:9,height:9},
+    {id:null,type:'source',position:Ie.Right,x:width-4.5,y:20.5,width:9,height:9}
+  ]};
+}
 function lcCanvasHistory(workspace) {
   return {nodes:workspace.nodes.map(node=>{if(!['input','note'].includes(node.data.kind))return node;const {prompt,systemPrompt,...data}=node.data;return {...node,data};}),edges:workspace.edges};
 }
@@ -20897,11 +20910,11 @@ function V8() {
     var ue;
     snapBypass.current=Z.altKey;
     Ab(Z.target) || (ue = pasteSink.current || de.current) == null || ue.focus({ preventScroll: true });
-  }, children: [b.jsx("div",{ref:pasteSink,contentEditable:true,suppressContentEditableWarning:true,className:"canvas-paste-target",tabIndex:-1,"aria-hidden":true,onInput:event=>{event.currentTarget.textContent="";}}), b.jsx("input",{ref:canvasImageInput,hidden:true,type:"file",accept:"image/png,image/jpeg,image/webp",multiple:true,"aria-label":"导入多张图片",onChange:event=>{const files=lc15ClipboardImages({files:event.currentTarget.files});event.currentTarget.value="";if(files.length)pasteImages(files);}}), Ee ? b.jsx(iE.Provider, { value: Za, children: b.jsxs(RA, { onlyRenderVisibleElements:true, nodes: Ee.nodes.map((Z) => ({ ...Z, type: "canvas", sourcePosition:Ie.Right, targetPosition:Ie.Left, dragHandle: ".node-drag-handle" })), edges: Ee.edges.map(edge => {
+  }, children: [b.jsx("div",{ref:pasteSink,contentEditable:true,suppressContentEditableWarning:true,className:"canvas-paste-target",tabIndex:-1,"aria-hidden":true,onInput:event=>{event.currentTarget.textContent="";}}), b.jsx("input",{ref:canvasImageInput,hidden:true,type:"file",accept:"image/png,image/jpeg,image/webp",multiple:true,"aria-label":"导入多张图片",onChange:event=>{const files=lc15ClipboardImages({files:event.currentTarget.files});event.currentTarget.value="";if(files.length)pasteImages(files);}}), Ee ? b.jsx(iE.Provider, { value: Za, children: b.jsxs(RA, { onlyRenderVisibleElements:true, nodes: Ee.nodes.map(lcCanvasFlowNode), edges: Ee.edges.map(edge => {
   const source = lcNodeIndex.get(edge.source), target = lcNodeIndex.get(edge.target);
   const images = window.LightCanvasImages.idsOf(source,c);
-  return {...edge, type: "default", pathOptions: {curvature: 0.3}, label: edge.data?.kind === "generation" ? undefined : target?.data.mode === "image" && images?.length ? "参考图" : edge.label};
-}), connectionLineType: "default", nodeTypes: I8, onNodesChange: (Z) => {
+  return {...edge, ...(edge.data?.kind==='generation'?{style:{...edge.style,stroke:'#777',strokeWidth:1.5}}:{}), type: "default", pathOptions: {curvature: 0.3}, label: edge.data?.kind === "generation" ? undefined : target?.data.mode === "image" && images?.length ? "参考图" : edge.label};
+}), connectionLineType: "default", nodeTypes: I8, edgeTypes:lcCanvasEdgeTypes, onNodesChange: (Z) => {
     const positions=Z.filter(change=>change.type==='position'&&change.position);
     Ye(ue=>{
       let nodes=t2(Z,ue.nodes);

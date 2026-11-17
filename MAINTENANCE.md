@@ -1,4 +1,4 @@
-# 轻画布开发交接 · 2.3.3
+# 轻画布开发交接 · 2.3.4
 
 详见CHANGELOG.md。运行时双击index.html，选择本机数据文件夹。仓库不包含用户数据；首次使用新建数据文件夹并配置 API。不要改回必须命令启动的服务器。
 
@@ -67,6 +67,9 @@ Python 3 执行 src/rebuild.py；在src 目录 npm test。Node/Playwright/Chrome
 - 不自动改写已有画布位置；手动整理布局保留未选节点及原有节点字段，支持撤销重做。
 
 ## 原生比例与连线
+
+- lcCanvasFlowNode 只在传给 React Flow 时提供初始宽度及固定头部端口几何，测量后的 handleBounds 优先；避免端口测量延迟导致生成线缺失，不向 API 或 data 添加显示元数据。
+- lcCanvasEdge 按当前缩放补偿 strokeWidth，保持屏幕线宽；外层 HTML 的 CSS 缩放不能仅依赖 SVG non-scaling-stroke。generation-edges.mjs 覆盖端口测量延迟和离屏双结果。
 - image-sizing.js 共用原生尺寸计算与校验，前端预览和后端请求不可分叉；尺寸限制依据 OpenAI 官方 image-generation 文档。
 - 不做本地缩放/补边；返回实际尺寸不符时保留原始字节并记录 warning，结果节点与详情均显示。旧记录不改写。
 - 横向端口固定距顶部 25px；节点显式设置 sourcePosition Right / targetPosition Left，与实际 handle 方向一致。
