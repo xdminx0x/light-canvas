@@ -1,4 +1,4 @@
-# 轻画布开发交接 · 2.3.5
+# 轻画布开发交接 · 3.0.0
 
 详见CHANGELOG.md。运行时双击index.html，选择本机数据文件夹。仓库不包含用户数据；首次使用新建数据文件夹并配置 API。不要改回必须命令启动的服务器。
 
@@ -82,3 +82,13 @@ Python 3 执行 src/rebuild.py；在src 目录 npm test。Node/Playwright/Chrome
 - 未知模型、负数/无效用量、缺失/不一致分类不得冒充完整总价。已知部分仅标注部分费用，非 USD 手动价格不转换。
 - direct Images API 不套用 GPT Image 2/2.5 的 Responses 缓存优惠，不采用 Batch 单价。
 - image-costs.mjs 包含计价单测、模拟接口完成保存、历史展示无改写和桌面/窄屏布局验证，禁止使用真实 API 做费用回归。
+
+## 聊天文档 · 3.0
+
+- documents.js 共用格式、尺寸、连线解析及本地 DOCX 文字预览。文档 ID 使用独立 documentIds，不混入图片 assetIds/@ 编号/缩略图。
+- 独立 document 节点通过 reference 连线引用；UI 与请求每次按当前连线计算，不把链接附件复制到目标节点，不引入 excludedDocumentIds。断开/删除节点即移除当前引用。直接附件单独保存在输入 documentIds。
+- snapshot.documentIds 保存本次完整文档引用用于清理保留；currentDocumentIds 保存本轮直接及链接文档，用于显式对话历史。结果节点不继承输入 documentIds。
+- Responses input_file 的 filename 使用原文件名，file_data 在发送时经 loadAsset 物化为原文件 MIME + Base64。原文件统一存 data/assets，复用备份与恢复；清理必须同时检查节点和历史快照 documentIds。
+- 文档总量校验按请求中的实际文件出现次数计算，包含对话历史；不自动切换协议/模型或静默忽略文档。禁止付费 API 回归。
+- 文档预览复用安全 Markdown 渲染；PDF 使用本地 Blob iframe，DOCX 只解析 word/document.xml 的文字，不执行宏/外链；关闭释放 Blob URL 并恢复焦点。旧 DOC 提供原文件下载。
+- documents.mjs 覆盖原始字节、多格式附件、预览与关闭、剪贴板节点、实际端口连接/断开/重连、换文件与删除、刷新恢复、历史和清理保留、协议与大小限制。

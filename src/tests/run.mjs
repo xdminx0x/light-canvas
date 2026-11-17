@@ -10,7 +10,7 @@ const fixture=JSON.parse(match[1]);fixture.state.provider={"openai-responses":{"
 const temp=await mkdtemp(join(tmpdir(),'light-canvas-tests-'));
 try {
  const file=join(temp,'fixture.html');await writeFile(file,html.replace(match[1],JSON.stringify(fixture)));
- for(const name of ['interactions','folder-interactions','layout','clipboard-mentions','resources','image-history','mouse-controls','image-deletion','reference-scope','model-order','folder-permissions','native-sizing','image-costs','node-snapping','result-references','paste-position','prompt-caret','reference-replacement','generation-edges']) {
+ for(const name of ['interactions','folder-interactions','layout','clipboard-mentions','resources','image-history','mouse-controls','image-deletion','reference-scope','model-order','folder-permissions','native-sizing','image-costs','node-snapping','result-references','paste-position','prompt-caret','reference-replacement','generation-edges','documents']) {
   const result=spawnSync(process.execPath,[fileURLToPath(new URL(name+'.mjs',import.meta.url)),name==='resources'?htmlPath:file],{stdio:'inherit',env:process.env});
   if(result.status!==0)throw Error(name+' failed: '+result.status);
  }

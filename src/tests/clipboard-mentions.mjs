@@ -47,22 +47,23 @@ try{
    await page.getByRole('button',{name:'平移模式',exact:true}).click();
    await page.keyboard.press(process.platform==='darwin'?'Meta+v':'Control+v');
  }else await paste(1,'toolbar');
- await page.waitForFunction(()=>document.querySelectorAll('[data-testid="node-reference-image"]').length===1);
+ await page.waitForFunction(id=>window.__lcBackend.getState().workspace[id].nodes.filter(n=>n.data.kind==='image'&&!n.data.runId).length===1,wid);
  if(native){await page.evaluate(()=>document.activeElement?.blur());await page.keyboard.press(process.platform==='darwin'?'Meta+v':'Control+v');}else await paste(1);
- await page.waitForFunction(()=>document.querySelectorAll('[data-testid="node-reference-image"]').length===2);
+ await page.waitForFunction(id=>window.__lcBackend.getState().workspace[id].nodes.filter(n=>n.data.kind==='image'&&!n.data.runId).length===2,wid);
  // Multiple copied files become separate image nodes in one action.
  if(native&&process.platform==='win32'){
    const temporary=mkdtempSync(path.join(tmpdir(),'light-canvas-paste-')),paths=pngs.map((base64,index)=>{const file=path.join(temporary,`test-${index}.png`);writeFileSync(file,Buffer.from(base64,'base64'));return file;});
-   try{execFileSync('powershell.exe',['-STA','-NoProfile','-ExecutionPolicy','Bypass','-File',fileURLToPath(new URL('./set-clipboard-files.ps1',import.meta.url)),...paths]);await page.evaluate(()=>document.activeElement?.blur());await page.keyboard.press('Control+v');await page.waitForFunction(()=>document.querySelectorAll('[data-testid="node-reference-image"]').length===4).catch(async error=>{console.log('native file paste nodes',await page.getByTestId('node-reference-image').count());throw error;});}finally{for(const file of paths)unlinkSync(file);rmdirSync(temporary);}
- }else{await paste(2);await page.waitForFunction(()=>document.querySelectorAll('[data-testid="node-reference-image"]').length===4);}
+   try{execFileSync('powershell.exe',['-STA','-NoProfile','-ExecutionPolicy','Bypass','-File',fileURLToPath(new URL('./set-clipboard-files.ps1',import.meta.url)),...paths]);await page.evaluate(()=>document.activeElement?.blur());await page.keyboard.press('Control+v');await page.waitForFunction(id=>window.__lcBackend.getState().workspace[id].nodes.filter(n=>n.data.kind==='image'&&!n.data.runId).length===4,wid).catch(async error=>{console.log('native file paste nodes',await page.getByTestId('node-reference-image').count());throw error;});}finally{for(const file of paths)unlinkSync(file);rmdirSync(temporary);}
+ }else{await paste(2);await page.waitForFunction(id=>window.__lcBackend.getState().workspace[id].nodes.filter(n=>n.data.kind==='image'&&!n.data.runId).length===4,wid);}
  // Multiple file import has the same behavior, without needing clipboard permissions.
  await page.getByLabel('导入多张图片').setInputFiles(pngs.map((base64,index)=>({name:`import-${index}.png`,mimeType:'image/png',buffer:Buffer.from(base64,'base64')})));
- await page.waitForFunction(()=>document.querySelectorAll('[data-testid="node-reference-image"]').length===6);
+ await page.waitForFunction(id=>window.__lcBackend.getState().workspace[id].nodes.filter(n=>n.data.kind==='image'&&!n.data.runId).length===6,wid);
  await page.waitForFunction(id=>Object.values(window.__lcBackend.getState().workspace[id]?.imageLabels||{}).length===6,wid).catch(async error=>{console.log(JSON.stringify(await page.evaluate(()=>({workspaces:Object.values(window.__lcBackend.getState().workspace).map(w=>({id:w.id,nodes:w.nodes.length,labels:Object.keys(w.imageLabels||{}).length})),status:document.querySelector('.save-indicator')?.innerText,toast:document.querySelector('.toast')?.innerText}))));throw error;});
  let workspace=await page.evaluate(id=>window.__lcBackend.getState().workspace[id],wid);
  assert.equal(new Set(Object.values(workspace.imageLabels)).size,6);
  // @ picker works for images not previously connected to the prompt.
  await page.getByRole('button',{name:'适合全部节点',exact:true}).click();await page.waitForTimeout(300);
+ await page.waitForFunction(()=>document.querySelectorAll('[data-testid="node-reference-image"]').length===6);
  await field.fill('颜色取自');await field.pressSequentially('@');
  await page.getByRole('listbox',{name:'选择参考图片'}).waitFor();
  const choice=page.getByRole('option').nth(1),label=(await choice.locator('strong').innerText()).slice(1);

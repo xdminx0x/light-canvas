@@ -14111,7 +14111,7 @@ async function IM(e12) {
     const o = new FileReader();
     o.onload = () => l(String(o.result).split(",")[1]), o.onerror = a, o.readAsDataURL(e12);
   });
-  return _r("/assets", { name: e12.name, mime: e12.type, base64: i });
+  return _r("/assets", { name: e12.name, mime: e12.type, base64: i, ...(window.LightCanvasDocuments.mime(e12.name)?{kind:"document"}:{}) });
 }
 function qM(e12, i) {
   const l = {};
@@ -19719,6 +19719,54 @@ function lc15ReferenceImageNode({id,data,selected,context}) {
   ]});
 }
 
+function lcDocumentViewer({assetId,assets,onClose}) {
+  const asset=assets[assetId],ext=asset?.name.split('.').pop().toLowerCase(),[state,setState]=L.useState({loading:true}),dialog=L.useRef(null),close=L.useRef(onClose);
+  close.current=onClose;
+  L.useEffect(()=>{
+    let alive=true,url='';
+    (async()=>{try{
+      const res=await fetch('/api/assets/'+encodeURIComponent(assetId));if(!res.ok)throw Error('无法读取文档，请确认数据文件夹仍可访问。');
+      const blob=await res.blob();url=URL.createObjectURL(blob);
+      const text=ext==='md'?await blob.text():ext==='docx'?await window.LightCanvasDocuments.wordText(blob):'';
+      if(alive)setState({url,text,loading:false});else if(url)URL.revokeObjectURL(url);
+    }catch(error){if(alive)setState({url,error:error.message,loading:false});else if(url)URL.revokeObjectURL(url)}})();
+    return()=>{alive=false;if(url)URL.revokeObjectURL(url)};
+  },[assetId,ext]);
+  L.useEffect(()=>{
+    const previous=document.activeElement;dialog.current?.querySelector('button')?.focus();
+    const key=event=>{
+      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close.current();}
+      if(event.key==='Tab'){
+        const nodes=Array.from(dialog.current.querySelectorAll('button,a[href],iframe,[tabindex="0"]')).filter(n=>!n.disabled),first=nodes[0],last=nodes.at(-1);
+        if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}
+      }
+    };
+    window.addEventListener('keydown',key,true);return()=>{window.removeEventListener('keydown',key,true);previous?.focus?.({preventScroll:true})};
+  },[]);
+  return Jc.createPortal(b.jsx("div",{className:"document-viewer-overlay",onMouseDown:event=>{if(event.target===event.currentTarget)onClose()},children:b.jsxs("section",{ref:dialog,className:"document-viewer",role:"dialog","aria-modal":true,"aria-labelledby":"document-viewer-title",children:[
+    b.jsxs("header",{children:[b.jsxs("div",{children:[b.jsx("h2",{id:"document-viewer-title",children:asset?.name||"文档预览"}),b.jsx("p",{children:asset?`${ext.toUpperCase()} · ${window.LightCanvasDocuments.size(asset.size)} · 原始文件`:"文件不存在"})]}),b.jsxs("div",{className:"document-viewer-actions",children:[state.url&&b.jsxs("a",{href:state.url,download:asset?.name,className:"text-btn",children:[b.jsx(Xa,{size:16}),"下载原文件"]}),b.jsx("button",{type:"button",className:"node-icon","aria-label":"关闭文档预览",onClick:onClose,children:b.jsx(Yl,{size:20})})]})]}),
+    b.jsxs("div",{className:"document-viewer-content nowheel",children:[
+      state.loading?b.jsx("p",{role:"status",className:"document-preview-state",children:"正在读取文档…"}):state.error?b.jsx("p",{role:"alert",className:"document-preview-state",children:state.error}):ext==='pdf'?b.jsx("iframe",{title:asset?.name||"PDF 文档",src:state.url}):ext==='md'?b.jsx("article",{className:"document-prose",children:b.jsx(JS,{text:state.text})}):ext==='docx'?b.jsxs("article",{className:"document-prose",children:[b.jsx("p",{className:"document-preview-note",children:"Word 文字预览 · 图片与原始排版请下载后用 Word 查看"}),b.jsx("pre",{children:state.text||"未找到可预览的正文，请下载原文件查看。"})]}):b.jsx("p",{className:"document-preview-state",children:"浏览器无法预览旧版 .doc 正文，请下载原文件后用 Word 打开。"})
+    ]})
+  ]})}),document.body);
+}
+function lcDocumentAttachments({nodeId,data,context}) {
+  const direct=(data.documentIds||[]).map(id=>({id,key:id})), linked=window.LightCanvasDocuments.linked(context.workspace,nodeId);
+  const files=[...direct,...linked];
+  if(!files.length)return null;
+  return b.jsxs("section",{className:"document-attachments","aria-label":"文档附件",children:[
+    b.jsx("ul",{children:files.map(file=>{const asset=context.assets[file.id];return b.jsxs("li",{children:[b.jsx(q2,{size:17,"aria-hidden":true}),b.jsxs("div",{children:[b.jsx("button",{type:"button",className:"document-name",title:"预览文档",onClick:()=>context.readDocument(file.id),children:asset?.name||"文档不存在"}),b.jsx("small",{children:asset?window.LightCanvasDocuments.size(asset.size)+(file.edgeId?' · 来自连线':''):"请移除后重新添加"})]}),b.jsx("button",{type:"button",className:"node-icon","aria-label":`${file.edgeId?'断开文档':'移除文档'}：${asset?.name||file.id}`,title:file.edgeId?"断开文档连线":"移除文档",onClick:()=>file.edgeId?context.unlink(file.edgeId):context.update(nodeId,{documentIds:(data.documentIds||[]).filter(id=>id!==file.id)}),children:b.jsx(Yl,{size:14})})]},file.key);})}),
+    b.jsx("p",{children:data.mode==='chat'?"发送时附带原文件 · 仅 Responses 聊天接口":"文档仅用于聊天，请切换到聊天或移除文档。"})
+  ]});
+}
+function lcDocumentNode({id,data,selected,context}) {
+  const asset=context.assets[data.documentIds?.[0]];
+  return b.jsxs("article",{className:`canvas-card document-card ${selected?'is-selected':''}`,"data-testid":"node-document",children:[
+    b.jsxs("header",{className:"node-drag-handle",children:[b.jsxs("span",{className:"node-title",children:[b.jsx(q2,{size:16}),"参考文档"]}),b.jsx("button",{className:"node-icon","aria-label":"删除节点",onClick:()=>context.remove(id),children:b.jsx(bc,{size:14})})]}),
+    b.jsxs("div",{className:"document-node-body nodrag nopan",children:[b.jsx(q2,{size:28,"aria-hidden":true}),b.jsx("button",{type:"button",className:"document-node-open",title:"预览文档",onClick:()=>context.readDocument(data.documentIds?.[0]),children:asset?.name||"文档不存在"}),asset&&b.jsx("small",{children:window.LightCanvasDocuments.size(asset.size)}),b.jsx("p",{children:"点击文件名预览；右侧端口可连到聊天节点，发送时附带原文件。"})]}),
+    b.jsx(Ya,{type:"source",position:Ie.Right,className:"canvas-handle"})
+  ]});
+}
 const iE = L.createContext(null), D8 = { queued: "排队中", running: "正在生成", completed: "已完成", failed: "请求失败", cancelled: "已停止", unknown: "结果待核实" }, O8 = L.memo(function({ id: i, data: l, selected: a }) {
   var v, S;
   const o = L.useContext(iE), s = L.useRef(null), raw = l.runId ? o.runs[l.runId] : void 0, c = raw && l.kind === "image" && Number.isInteger(l.resultIndex) ? {...raw,assetIds:window.LightCanvasImages.idsOf({data:l},o.runs),imageDelivery:(raw.imageDelivery||[]).filter(item=>window.LightCanvasImages.idsOf({data:l},o.runs).includes(item.finalAssetId))} : raw, d = (c == null ? void 0 : c.status) === "running" || (c == null ? void 0 : c.status) === "queued", m = l.kind === "input", g = l.kind === "note", y = o.providers.filter((E) => E.protocol === "mock" || (l.mode === "chat" ? E.protocol !== "images" : E.protocol === "images")), p = (E) => {
@@ -19727,6 +19775,7 @@ const iE = L.createContext(null), D8 = { queued: "排队中", running: "正在�
     const N = o.providers.find((k) => k.id === l.providerId), A = N && (N.protocol === "mock" || (E === "chat" ? N.protocol !== "images" : N.protocol === "images")) ? N : o.providers.find((k) => k.protocol !== "mock" && (E === "image" ? k.protocol === "images" : k.protocol !== "images")) || o.providers.find((k) => k.protocol === "mock");
     o.update(i, { mode: E, providerId: (A == null ? void 0 : A.id) || "demo", model: (A == null ? void 0 : A.protocol) === "mock" ? E === "chat" ? "demo-chat" : "demo-image" : (A == null ? void 0 : A.models[0]) || "" });
   }, x = g ? b.jsx(q2, { size: 16 }) : l.kind === "image" || l.mode === "image" ? b.jsx(vc, { size: 16 }) : b.jsx(wr, { size: 16 });
+  if(l.kind === "document") return b.jsx(lcDocumentNode,{id:i,data:l,selected:a,context:o});
   if(l.kind === "image" && !l.runId) return b.jsx(lc15ReferenceImageNode,{id:i,data:l,selected:a,context:o});
   return b.jsxs("article", { className: `canvas-card ${a ? "is-selected" : ""} ${m ? "input-card" : g ? "note-card" : "output-card"}`, "data-testid": `node-${l.kind}`, children: [b.jsx(Ya, { type: "target", position: Ie.Left, className: "canvas-handle", isConnectable: m }), b.jsxs("header", { className: "node-drag-handle", children: [b.jsxs("span", { className: "node-title", children: [x, b.jsx("span", { children: l.label || "未命名节点" })] }), b.jsxs("span", { className: "node-tools nodrag", children: [b.jsx("button", { className: "node-icon", title: "删除节点", "aria-label": "删除节点", onClick: () => o.remove(i), children: b.jsx(bc, { size: 14 }) })] })] }), m || g ? b.jsxs("div", { className: "nodrag node-editor", onDrop: (E) => {
     const reference = E.dataTransfer.getData("application/x-light-canvas-reference");
@@ -19734,16 +19783,16 @@ const iE = L.createContext(null), D8 = { queued: "排队中", running: "正在�
     E.dataTransfer.files.length && (E.preventDefault(), E.stopPropagation(), o.upload(i, Array.from(E.dataTransfer.files)));
   }, onDragOver: (E) => {
     (E.dataTransfer.types.includes("Files") || E.dataTransfer.types.includes("application/x-light-canvas-reference")) && E.preventDefault();
-  }, children: [m && b.jsx(lc12ReferenceImages, {nodeId:i, context:o}), m && b.jsxs("div", { className: "mode-tabs", children: [b.jsxs("button", { className: l.mode === "chat" ? "active" : "", onClick: () => p("chat"), children: [b.jsx(wr, { size: 14 }), "聊天"] }), b.jsxs("button", { className: l.mode === "image" ? "active" : "", onClick: () => p("image"), children: [b.jsx(vc, { size: 14 }), "生图"] }), b.jsx("button", { className: "mode-settings", "aria-label": "节点参数", title: "参数与上下文", onClick: () => o.showParams(i), children: b.jsx(I2, { size: 14 }) })] }), b.jsx(lc15PromptEditor, {nodeId:i,data:l,context:o,note:g}), !m && l.assetIds.length > 0 && b.jsx("div", { className: "attachments", children: l.assetIds.map((E) => {
+  }, children: [m && b.jsx(lc12ReferenceImages, {nodeId:i, context:o}), m && b.jsxs("div", { className: "mode-tabs", children: [b.jsxs("button", { className: l.mode === "chat" ? "active" : "", onClick: () => p("chat"), children: [b.jsx(wr, { size: 14 }), "聊天"] }), b.jsxs("button", { className: l.mode === "image" ? "active" : "", onClick: () => p("image"), children: [b.jsx(vc, { size: 14 }), "生图"] }), b.jsx("button", { className: "mode-settings", "aria-label": "节点参数", title: "参数与上下文", onClick: () => o.showParams(i), children: b.jsx(I2, { size: 14 }) })] }), b.jsx(lc15PromptEditor, {nodeId:i,data:l,context:o,note:g}), m && b.jsx(lcDocumentAttachments,{nodeId:i,data:l,context:o}), !m && l.assetIds.length > 0 && b.jsx("div", { className: "attachments", children: l.assetIds.map((E) => {
     var N, C;
     return b.jsxs("div", { className: "attachment", children: [b.jsx(lcAssetImage, { src: `/api/assets/${E}`, alt: ((N = o.assets[E]) == null ? void 0 : N.name) || "图片附件" }), b.jsx("span", { children: ((C = o.assets[E]) == null ? void 0 : C.name) || "原图" }), b.jsx("button", { className: "node-icon", title: "移除附件", onClick: () => o.update(i, { assetIds: l.assetIds.filter((A) => A !== E) }), children: b.jsx(Yl, { size: 12 }) })] }, E);
   }) }), m && b.jsxs(b.Fragment, { children: [b.jsxs(lc13NodeOptions, { data:l, children: [b.jsx("div", { className: "node-model", children: b.jsxs("select", { "aria-label": "节点模型", value: `${l.providerId}::${l.model}`, onChange: (E) => {
     const [N, ...C] = E.target.value.split("::");
     o.update(i, { providerId: N, model: C.join("::") });
-  }, children: [y.map((E) => b.jsx("optgroup", { label: E.name, children: (E.protocol === "mock" ? [l.mode === "chat" ? "demo-chat" : "demo-image"] : E.models).map((N) => b.jsx("option", { value: `${E.id}::${N}`, children: E.protocol === "mock" ? "本地演示 · 不调用 API" : N }, N)) }, E.id)), !y.some((E) => E.id === l.providerId && (E.protocol === "mock" || E.models.includes(l.model))) && b.jsx("option", { value: `${l.providerId}::${l.model}`, children: l.model || "请选择模型" })] }) }), l.mode === "image" && b.jsx(nE, { model: l.model, params: l.params, compact: true, onChange: (E) => o.update(i, { params: { ...l.params, ...E } }) })] }), b.jsxs("div", { className: "input-bottom", children: [b.jsxs("div", { className: "input-tools", children: [b.jsx("button", { className: "node-icon", title: "添加图片原文件", "aria-label": "添加图片", onClick: () => {
+  }, children: [y.map((E) => b.jsx("optgroup", { label: E.name, children: (E.protocol === "mock" ? [l.mode === "chat" ? "demo-chat" : "demo-image"] : E.models).map((N) => b.jsx("option", { value: `${E.id}::${N}`, children: E.protocol === "mock" ? "本地演示 · 不调用 API" : N }, N)) }, E.id)), !y.some((E) => E.id === l.providerId && (E.protocol === "mock" || E.models.includes(l.model))) && b.jsx("option", { value: `${l.providerId}::${l.model}`, children: l.model || "请选择模型" })] }) }), l.mode === "image" && b.jsx(nE, { model: l.model, params: l.params, compact: true, onChange: (E) => o.update(i, { params: { ...l.params, ...E } }) })] }), b.jsxs("div", { className: "input-bottom", children: [b.jsxs("div", { className: "input-tools", children: [b.jsx("button", { className: "node-icon", title: l.mode==="chat"?"添加图片或文档原文件":"添加图片原文件", "aria-label": l.mode==="chat"?"添加附件":"添加图片", onClick: () => {
     var E;
     return (E = s.current) == null ? void 0 : E.click();
-  }, children: b.jsx(MM, { size: 16 }) }), b.jsx("button", { className: "node-icon", title: "查看实际发送内容", "aria-label": "查看实际发送内容", onClick: () => o.inspect(i), children: b.jsx(H2, { size: 16 }) }), b.jsx("span", { className: "input-shortcut", children: o.uploading[i] ? "正在保存图片…" : "Ctrl ↵ 发送" })] }), b.jsx("button", { className: "send-button", title: "发送原文与所选图片", "aria-label": "发送", disabled: !!o.uploading[i] || !l.prompt.trim() && !l.assetIds.length && !lc12HasLinkedImages(i, o), onClick: () => o.send(i), children: b.jsx(O2, { size: 18 }) })] }), b.jsx("input", { hidden: true, ref: s, type: "file", accept: "image/png,image/jpeg,image/webp", multiple: true, onChange: (E) => {
+  }, children: b.jsx(MM, { size: 16 }) }), b.jsx("button", { className: "node-icon", title: "查看实际发送内容", "aria-label": "查看实际发送内容", onClick: () => o.inspect(i), children: b.jsx(H2, { size: 16 }) }), b.jsx("span", { className: "input-shortcut", children: o.uploading[i] ? "正在保存附件…" : "Ctrl ↵ 发送" })] }), b.jsx("button", { className: "send-button", title: "发送原文与所选附件", "aria-label": "发送", disabled: !!o.uploading[i] || !l.prompt.trim() && !l.assetIds.length && !l.documentIds?.length && !window.LightCanvasDocuments.linked(o.workspace,i).length && !lc12HasLinkedImages(i, o), onClick: () => o.send(i), children: b.jsx(O2, { size: 18 }) })] }), b.jsx("input", { hidden: true, ref: s, type: "file", "aria-label":"选择节点附件", accept: l.mode==="chat"?"image/png,image/jpeg,image/webp,"+window.LightCanvasDocuments.accept:"image/png,image/jpeg,image/webp", multiple: true, onChange: (E) => {
     o.upload(i, Array.from(E.target.files || [])), E.target.value = "";
   } })] })] }) : b.jsxs("div", { className: "nodrag result-body", children: [b.jsxs("div", { className: "result-meta", children: [b.jsxs("span", { className: "run-status", children: [d ? b.jsx(CM, { size: 13, className: "spin" }) : (c == null ? void 0 : c.status) === "completed" ? b.jsx(xM, { size: 13 }) : b.jsx(jp, { size: 13 }), " ", c ? D8[c.status] : "等待提交"] }), b.jsx("span", { children: (c == null ? void 0 : c.providerName) || "" })] }), l.kind === "image" ? (v = c == null ? void 0 : c.assetIds) != null && v.length ? b.jsx("div", { className: "image-grid", children: c.assetIds.map((E) => b.jsx("button", { className: "image-preview", draggable:true, title:"点击查看大图，或拖到输入节点作为参考", onDragStart:event => {event.dataTransfer.setData("application/x-light-canvas-reference",i);event.dataTransfer.effectAllowed="link";}, onClick: () => l.runId && o.read(l.runId, c?.assetIds?.[0]), children: b.jsx(lcAssetImage, { src: `/api/assets/${E}`, alt: "生成结果", draggable:false }) }, E)) }) : b.jsxs("div", { className: "image-wait", children: [b.jsx(vc, { size: 30 }), b.jsx("span", { children: d ? "正在等待图片返回…" : "图片会显示在这里" })] }) : b.jsxs("div", { className: "result-preview nowheel", children: [b.jsx(JS, { text: ((S = c == null ? void 0 : c.text) == null ? void 0 : S.slice(0, 2e3)) || (d ? "正在连接，等待响应…" : "") }), ((c == null ? void 0 : c.text.length) || 0) > 2e3 && b.jsx("div", { className: "preview-cut", children: "卡片显示部分内容，展开阅读全文" })] }), l.kind === "image" && b.jsx(lc12ImageDelivery, {run:c}), l.kind === "image" && c?.status === "completed" && c.assetIds?.length > 0 && b.jsxs("button", {className:"reference-image-button", onClick:() => o.follow(i), children:[b.jsx(wM,{size:15}),"作为参考图", b.jsx("span",{children:"继续生图"})]}), (c == null ? void 0 : c.error) && b.jsx("p", { className: "run-error", children: c.error }), b.jsxs("div", { className: "result-actions", children: [b.jsxs("button", { className: "text-btn", onClick: () => l.runId && o.read(l.runId, c?.assetIds?.[0]), children: [b.jsx(U2, { size: 14 }), "展开阅读"] }), b.jsxs("div", { className: "result-action-icons", children: [b.jsx("button", { className: "node-icon", title: "独立窗口查看", "aria-label": "独立窗口查看", onClick: () => {
     if (l.runId) {
@@ -20432,6 +20481,7 @@ function lcCanvasHistory(workspace) {
   return {nodes:workspace.nodes.map(node=>{if(!['input','note'].includes(node.data.kind))return node;const {prompt,systemPrompt,...data}=node.data;return {...node,data};}),edges:workspace.edges};
 }
 function V8() {
+  const [documentPreview,setDocumentPreview]=L.useState(null);
   const [snapGuides,setSnapGuides]=L.useState([]),snapBypass=L.useRef(false),canvasPointer=L.useRef(null),latestPrompts=L.useRef(new Map());
   L.useEffect(()=>{const key=event=>{snapBypass.current=event.altKey;if(event.altKey)setSnapGuides([]);},blur=()=>{snapBypass.current=false;setSnapGuides([]);};window.addEventListener('keydown',key);window.addEventListener('keyup',key);window.addEventListener('blur',blur);return()=>{window.removeEventListener('keydown',key);window.removeEventListener('keyup',key);window.removeEventListener('blur',blur);};},[]);
 
@@ -20593,7 +20643,7 @@ function V8() {
     if (O.current || ce.current.has(Z))
       return;
     if (te.current.size) {
-      be("图片正在保存，请等待附件显示后再发送。");
+      be("附件正在保存，请等待附件显示后再发送。");
       return;
     }
     const ge = Le.current, _e = ge == null ? void 0 : ge.nodes.find((je) => je.id === Z);
@@ -20621,7 +20671,7 @@ function V8() {
       const je = Le.current;
       if (je.id !== ge.id || !je.nodes.some((Ue) => Ue.id === Z))
         throw new Error("画布已改变，尚未发送，请在目标节点重新操作。");
-      const He = { id: Ta(), type: "canvas", dragHandle: ".node-drag-handle", position: lc16Right(je,je.nodes.find(node=>node.id===Z),_e.data.mode === "image" ? "image" : "text"), data: { ..._e.data, kind: _e.data.mode === "image" ? "image" : "text", label: _e.data.mode === "image" ? "图片结果" : "回复", prompt: "", runId: ze, assetIds: [] } };
+      const He = { id: Ta(), type: "canvas", dragHandle: ".node-drag-handle", position: lc16Right(je,je.nodes.find(node=>node.id===Z),_e.data.mode === "image" ? "image" : "text"), data: { ..._e.data, kind: _e.data.mode === "image" ? "image" : "text", label: _e.data.mode === "image" ? "图片结果" : "回复", prompt: "", runId: ze, assetIds: [], documentIds: [] } };
       const results=[He];
       if(_e.data.mode==='image'){
         He.data={...He.data,resultIndex:0};
@@ -20668,27 +20718,29 @@ function V8() {
     if (ge) {
       te.current.set(Z, (te.current.get(Z) || 0) + 1), me(Object.fromEntries(te.current));
       try {
-        const je = ue.filter((tt) => ["image/png", "image/jpeg", "image/webp"].includes(tt.type));
-        if (!je.length) {
-          be("请选择 PNG、JPEG 或 WebP 图片。");
-          return;
+        const target=qe.current.find(w=>w.id===ge)?.nodes.find(n=>n.id===Z),chat=target?.data.kind==='input'&&target.data.mode==='chat';
+        const je = ue.filter(file=>["image/png","image/jpeg","image/webp"].includes(file.type)||window.LightCanvasDocuments.mime(file.name));
+        if(je.length!==ue.length||!je.length)throw Error(chat?"请选择 PNG、JPEG、WebP 图片或 MD、Word、PDF 文档。":"请选择 PNG、JPEG 或 WebP 图片。");
+        for(const file of je){
+          if(window.LightCanvasDocuments.mime(file.name)){
+            if(!chat)throw Error("文档仅用于聊天，请切换到聊天后添加。");
+            window.LightCanvasDocuments.validate(file);
+          }else if(file.size>20*1024*1024)throw Error("单张图片不能超过 20 MB");
         }
         const He = [];
-        for (const tt of je) {
-          if (tt.size > 20 * 1024 * 1024)
-            throw new Error("单张图片不能超过 20 MB");
-          He.push(await IM(tt));
-        }
+        for (const file of je) He.push(await IM(file));
+        const images=He.filter(a=>!window.LightCanvasDocuments.mime(a.name)).map(a=>a.id),documents=He.filter(a=>window.LightCanvasDocuments.mime(a.name)).map(a=>a.id);
+        const attach=data=>({...data,assetIds:[...(data.assetIds||[]),...images],...(documents.length?{documentIds:[...(data.documentIds||[]),...documents]}:{})});
         g((tt) => ({ ...tt, ...Object.fromEntries(He.map((ft) => [ft.id, ft])) }));
         const Re = qe.current.find((tt) => tt.id === ge), Ue = Re == null ? void 0 : Re.nodes.find((tt) => tt.id === Z);
         if (Ue && Re)
           if (((ze = Le.current) == null ? void 0 : ze.id) === ge)
-            Ye((tt) => ({ ...tt, nodes: tt.nodes.map((ft) => ft.id === Z ? { ...ft, data: { ...ft.data, assetIds: [...ft.data.assetIds, ...He.map((ht) => ht.id)] } } : ft) }), true);
+            Ye((tt) => ({ ...tt, nodes: tt.nodes.map((ft) => ft.id === Z ? { ...ft, data: attach(ft.data) } : ft) }), true);
           else {
-            const tt = { ...Re, nodes: Re.nodes.map((ft) => ft.id === Z ? { ...ft, data: { ...ft.data, assetIds: [...ft.data.assetIds, ...He.map((ht) => ht.id)] } } : ft) };
+            const tt = { ...Re, nodes: Re.nodes.map((ft) => ft.id === Z ? { ...ft, data: attach(ft.data) } : ft) };
             xe.current[ge] = (xe.current[ge] || 0) + 1, Se.current.add(ge), i((ft) => ft.map((ht) => ht.id === ge ? tt : ht)), await Ve(tt);
           }
-        be(Ue ? `已添加 ${He.length} 张原图，未进行压缩或修改` : "原节点已删除，未附加图片。");
+        be(Ue ? `已添加 ${He.length} 个原始附件` : "原节点已删除，未附加附件。");
       } catch (je) {
         be(je.message);
       } finally {
@@ -20702,14 +20754,15 @@ function V8() {
     const ue = Le.current, ge = Z || K.current;
     if (!ue || !(ge != null && ge.nodes.length))
       return;
-    const imagePaste=ge.nodes.some(node=>node.data.kind==='image'),anchor=imagePaste?(placement||pastePlacement()):null;
+    const imagePaste=ge.nodes.some(node=>['image','document'].includes(node.data.kind)),anchor=imagePaste?(placement||pastePlacement()):null;
     const offset=anchor?{x:anchor.position.x-Math.min(...ge.nodes.map(node=>node.position.x)),y:anchor.position.y-Math.min(...ge.nodes.map(node=>node.position.y))}:{x:70,y:70};
     const _e = new Map(ge.nodes.map((He) => [He.id, Ta()])), ze = ge.nodes.map((He) => {
       var Re, Ue;
       return { ...structuredClone(He), id: _e.get(He.id), selected: true, position: { x: He.position.x + offset.x, y: He.position.y + offset.y }, data: { ...structuredClone(He.data), ...He.data.runId ? { kind: He.data.kind==='image'?'image':'note', resultIndex:undefined, prompt: ((Re = pt.current[He.data.runId]) == null ? void 0 : Re.text) || "", assetIds: window.LightCanvasImages.idsOf(He,pt.current), runId: void 0, label: He.data.kind==='image'?'参考图片':'结果副本' } : {} } };
     }), je = ge.edges.filter((He) => _e.has(He.source) && _e.has(He.target)).map((He) => ({ ...structuredClone(He), id: Ta(), source: _e.get(He.source), target: _e.get(He.target), selected: false }));
-    if(ze.some(node=>node.data.assetIds?.some(id=>!window.__lcBackend.getState().asset[id]))){be('原图不存在，请在原画布复制或导入原文件。');return}
-    if(targetId)for(const node of ze)if(node.data.kind==='image')je.push(Em(node.id,targetId,'reference'));
+    if(ze.some(node=>[...(node.data.assetIds||[]),...(node.data.documentIds||[])].some(id=>!window.__lcBackend.getState().asset[id]))){be('附件不存在，请在原画布复制或导入原文件。');return}
+    if(targetId&&ze.some(node=>node.data.kind==='document')&&ue.nodes.find(n=>n.id===targetId)?.data.mode!=='chat'){be('文档仅可连接聊天节点。');return}
+    if(targetId)for(const node of ze)if(['image','document'].includes(node.data.kind))je.push(Em(node.id,targetId,'reference'));
     Ye((He) => ({ ...He, nodes: [...He.nodes.map((Re) => ({ ...Re, selected: false })), ...ze], edges: [...He.edges, ...je] }), true);
     if(imagePaste&&!anchor.atPointer)setTimeout(()=>Ae.fitView({nodes:ze.map(node=>({id:node.id})),maxZoom:1,padding:0.3,duration:180}),40);
   }, [Ye,m,Ae,be,pastePlacement]), nn = L.useCallback(async (Z) => {
@@ -20728,7 +20781,7 @@ function V8() {
       } catch (Z) {
         be(Z.message);
       }
-  }, [Ke, be, e12.length]), Pt = T || !!U || !!M || G || !!ie;
+  }, [Ke, be, e12.length]), Pt = T || !!U || !!M || G || !!ie || !!documentPreview;
 
 
   const alignNodes=L.useCallback(()=>{
@@ -20748,23 +20801,25 @@ function V8() {
     const anchor=placement||pastePlacement(),position=anchor.position;
     const uploadTag="canvas:"+Ta();te.current.set(uploadTag,1);me(Object.fromEntries(te.current));
     try {
-      const supported=files.filter(file=>["image/png","image/jpeg","image/webp"].includes(file.type));
-      if(!supported.length || supported.length!==files.length) throw new Error("请选择 PNG、JPEG 或 WebP 图片。");
-      if(supported.some(file=>file.size>20*1024*1024)) throw new Error("单张图片不能超过 20 MB");
-      be("正在粘贴图片…");
+      const supported=files.filter(file=>["image/png","image/jpeg","image/webp"].includes(file.type)||window.LightCanvasDocuments.mime(file.name));
+      if(!supported.length || supported.length!==files.length) throw new Error("请选择 PNG、JPEG、WebP 图片或 MD、Word、PDF 文档。");
+      for(const file of supported)if(window.LightCanvasDocuments.mime(file.name))window.LightCanvasDocuments.validate(file);
+      if(supported.some(file=>!window.LightCanvasDocuments.mime(file.name)&&file.size>20*1024*1024)) throw new Error("单张图片不能超过 20 MB");
+      be("正在保存画布附件…");
       const assets=[];
       for(const file of supported) assets.push(await IM(file));
       g(current=>({...current,...Object.fromEntries(assets.map(asset=>[asset.id,asset]))}));
       const workspace=qe.current.find(item=>item.id===workspaceId);
       if(!workspace) return;
       const target=workspace.nodes.find(node=>node.id===targetId&&node.data.kind==="input");
+      if(target?.data.mode!=="chat"&&assets.some(a=>window.LightCanvasDocuments.mime(a.name))&&target)throw Error("文档仅可连接聊天节点，请先切换到聊天。");
       const base=target&&!anchor.atPointer?{x:target.position.x-430,y:target.position.y}:position;
       const nodes=[];
       for(const [index,asset] of assets.entries()) {
         const point={x:base.x+index*390,y:base.y};
         const node=zb("image",anchor.atPointer?point:km({...workspace,nodes:[...workspace.nodes,...nodes]},point),vt.current);
         node.dragHandle=".node-drag-handle";
-        node.data={...node.data,kind:"image",label:assets.length>1?`参考图片 ${index+1}`:"参考图片",assetIds:[asset.id],prompt:""};
+        node.data=window.LightCanvasDocuments.mime(asset.name)?{...node.data,kind:"document",label:"参考文档",assetIds:[],documentIds:[asset.id],prompt:""}:{...node.data,kind:"image",label:assets.length>1?`参考图片 ${index+1}`:"参考图片",assetIds:[asset.id],prompt:""};
         node.selected=true;
         nodes.push(node);
       }
@@ -20779,7 +20834,7 @@ function V8() {
         i(current=>current.map(item=>item.id===workspaceId?next:item));
         await Ve(next);
       }
-      be(target?"已粘贴原图并连接到提示词":"已粘贴为图片节点，可连接到提示词作为参考图");
+      be(assets.some(a=>window.LightCanvasDocuments.mime(a.name))?"已添加原始附件节点，文档可连接到聊天节点":target?"已粘贴原图并连接到提示词":"已粘贴为图片节点，可连接到提示词作为参考图");
     } catch(error) { be(error.message); } finally {te.current.delete(uploadTag);me(Object.fromEntries(te.current));}
   },[pastePlacement,Ye,Ve,Ae,be]);
 
@@ -20823,13 +20878,13 @@ function V8() {
     try {
       if(!navigator.clipboard?.read)throw new Error('浏览器无法读取剪贴板，请使用 Ctrl / Command + V，或导入图片。');
       const items=await navigator.clipboard.read(),files=[];
-      for(const item of items)if(item.types.includes('text/plain')){try{const copied=JSON.parse(await (await item.getType('text/plain')).text());if(copied.format==='light-canvas-nodes'&&copied.nodes?.every(node=>window.LightCanvasImages.idsOf(node,pt.current).every(id=>window.__lcBackend.getState().asset[id]))){In(copied,null,anchor);return}}catch{}}
+      for(const item of items)if(item.types.includes('text/plain')){try{const copied=JSON.parse(await (await item.getType('text/plain')).text());if(copied.format==='light-canvas-nodes'&&copied.nodes?.every(node=>[...window.LightCanvasImages.idsOf(node,pt.current),...(node.data.documentIds||[])].every(id=>window.__lcBackend.getState().asset[id]))){In(copied,null,anchor);return}}catch{}}
 
       for(const [index,item] of items.entries()){
-        const type=['image/png','image/jpeg','image/webp'].find(type=>item.types.includes(type));
-        if(type){const blob=await item.getType(type);files.push(new File([blob],`clipboard-${index+1}.${type.split('/')[1]}`,{type}));}
+        const type=['image/png','image/jpeg','image/webp','text/markdown','application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'].find(type=>item.types.includes(type));
+        if(type){const blob=await item.getType(type);files.push(new File([blob],`clipboard-${index+1}.${({'text/markdown':'md','application/pdf':'pdf','application/msword':'doc','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx'})[type]||type.split('/')[1]}`,{type}));}
       }
-      if(!files.length)throw new Error('剪贴板没有可读取的图片。复制图片本身，或使用“导入图片”一次选择多张。');
+      if(!files.length)throw new Error('剪贴板未提供可读取的附件内容。请复制文件后按 Ctrl / Cmd + V，或使用“导入文档 / 导入图片”。');
       await pasteImages(files,null,anchor);
     }catch(error){be(error.name==='NotAllowedError'?'请允许浏览器读取剪贴板，或使用“导入图片”。':error.message);}
   },[Pt,pasteImages,In,be,pastePlacement]);
@@ -20847,24 +20902,26 @@ function V8() {
       return {...workspace,edges:workspace.edges.filter(edge=>{if(edge.target!==nodeId)return true;const ids=window.LightCanvasImages.idsOf(workspace.nodes.find(n=>n.id===edge.source),pt.current);return !(ids.length===1&&ids[0]===assetId)}),nodes:workspace.nodes.map(node=>node.id===nodeId?{...node,data:{...node.data,assetIds:(node.data.assetIds||[]).filter(id=>id!==assetId),excludedImageIds:[...new Set([...(node.data.excludedImageIds||[]),assetId])],prompt:image?node.data.prompt.replace(new RegExp('@(?:图片|图)'+image.label.slice(1)+'(?!\\d)','g'),''):node.data.prompt}}:node)};
     },true);
   },[Ye,m]);
-  const pasteSerial=L.useRef(0),pasteFallback=L.useRef(null),canvasImageInput=L.useRef(null),pasteSink=L.useRef(null);
+  const pasteSerial=L.useRef(0),pasteFallback=L.useRef(null),canvasImageInput=L.useRef(null),canvasDocumentInput=L.useRef(null),pasteSink=L.useRef(null);
   L.useEffect(()=>{
     const editable=target=>target instanceof Element&&!!target.closest('input,textarea,select,[contenteditable="true"]:not(.canvas-paste-target)');
     const blocked=event=>Pt||O.current||!Le.current||document.querySelector('#folder-gate:not([hidden])')||editable(event.target)&&!event.target.closest('.prompt-input');
     const paste=event=>{
       if(event.defaultPrevented||blocked(event))return;
       pasteSerial.current++;clearTimeout(pasteFallback.current);
-      const images=lc15ClipboardImages(event.clipboardData);
+      const rawFiles=Array.from(event.clipboardData?.files||[]);
+      const documents=(rawFiles.length?rawFiles:Array.from(event.clipboardData?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean)).filter(file=>window.LightCanvasDocuments.mime(file.name));
+      const images=[...lc15ClipboardImages(event.clipboardData),...documents];
       const targetId=event.target.closest?.('.prompt-input')?.closest('.react-flow__node')?.dataset.id;
       const text=event.clipboardData?.getData('text/plain')||'';
-      try{const copied=JSON.parse(text);if(copied.format==='light-canvas-nodes'&&Array.isArray(copied.nodes)&&copied.nodes.every(node=>window.LightCanvasImages.idsOf(node,pt.current).every(id=>window.__lcBackend.getState().asset[id]))&&(!editable(event.target)||copied.nodes.every(node=>node.data.kind==='image'))){event.preventDefault();event.stopPropagation();In(copied,targetId);return;}}catch{}
+      try{const copied=JSON.parse(text);if(copied.format==='light-canvas-nodes'&&Array.isArray(copied.nodes)&&copied.nodes.every(node=>[...window.LightCanvasImages.idsOf(node,pt.current),...(node.data.documentIds||[])].every(id=>window.__lcBackend.getState().asset[id]))&&(!editable(event.target)||copied.nodes.every(node=>['image','document'].includes(node.data.kind)))){event.preventDefault();event.stopPropagation();In(copied,targetId);return;}}catch{}
       if(images.length){event.preventDefault();event.stopPropagation();pasteImages(images,targetId||null);return;}
       if(editable(event.target))return;
       // Some browsers expose embedded clipboard pictures as data URLs in HTML.
       const html=event.clipboardData?.getData('text/html')||'';
       if(html){const images=Array.from(html.matchAll(/src\s*=\s*["'](data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+\/=]+)["']/gi),match=>match[1]);if(images.length){event.preventDefault();Promise.all(images.map(async(src,index)=>{const blob=await fetch(src).then(r=>r.blob());return new File([blob],`clipboard-${index+1}.${blob.type.split('/')[1]}`,{type:blob.type});})).then(files=>pasteImages(files,targetId||null)).catch(error=>be(error.message));return;}}
       if(event.target.closest?.('.canvas-paste-target')||!editable(event.target))event.preventDefault();
-      if(event.clipboardData?.files?.length)be('这些文件不是支持的图片。请选择 PNG、JPEG 或 WebP。');
+      if(event.clipboardData?.files?.length)be('请选择 PNG、JPEG、WebP 图片或 MD、Word、PDF 文档。');
     };
     const fallback=event=>{
       if(!(event.ctrlKey||event.metaKey)||event.key.toLowerCase()!=='v'||event.repeat||blocked(event)||editable(event.target))return;
@@ -20877,7 +20934,7 @@ function V8() {
   },[Pt,pasteImages,pasteClipboard,In,be,m,pastePlacement]);
 
   const lcNodeIndex = L.useMemo(()=>new Map((Ee?.nodes||[]).map(n=>[n.id,n])),[Ee?.nodes]);
-  const Za = L.useMemo(() => ({ pasteImages, mentionImage, removeImage, providers: o, runs: c, assets: m, workspace: Ee, reference: Dt, unlink: edgeId => Ye(w => ({...w, edges:w.edges.filter(edge => edge.id !== edgeId)}), true), uploading: pe, update: zt, send: gi, stop: Hr, read: (runId,assetId)=>B(assetId?{runId,assetId}:runId), follow: dn, remove: Ft, inspect: rl, copy: Ql, upload: Br, settings: () => {
+  const Za = L.useMemo(() => ({ readDocument:setDocumentPreview, pasteImages, mentionImage, removeImage, providers: o, runs: c, assets: m, workspace: Ee, reference: Dt, unlink: edgeId => Ye(w => ({...w, edges:w.edges.filter(edge => edge.id !== edgeId)}), true), uploading: pe, update: zt, send: gi, stop: Hr, read: (runId,assetId)=>B(assetId?{runId,assetId}:runId), follow: dn, remove: Ft, inspect: rl, copy: Ql, upload: Br, settings: () => {
     Ke().then(() => Y(true)).catch(() => {
     });
   }, showParams: D }), [o, c, m, pe, zt, gi, Hr, dn, Ft, rl, Ql, Br, Ee, Dt, Ye, pasteImages, mentionImage, removeImage]), Bt = Ee == null ? void 0 : Ee.nodes.find((Z) => Z.id === j), al = (Ee == null ? void 0 : Ee.edges.filter((Z) => {
@@ -20897,7 +20954,7 @@ function V8() {
   }}), b.jsxs("button", { className: "workspace-row", onClick: () => {
     Ke().then(() => Y(true)).catch(() => {
     });
-  }, children: [b.jsx(Xm, { size: 17 }), b.jsx("span", { children: "服务商与设置" })] }), b.jsxs("button", { className: "workspace-row", onClick: () => J(true), children: [b.jsx(jv, { size: 17 }), b.jsx("span", { children: "快捷键" })] }), b.jsxs("div", { className: "local-note", children: [b.jsx(SM, { size: 13 }), b.jsx("span", { children: "保存在本机 · 可完整迁移" })] })] })] }), b.jsxs("main", { className: "workspace-main", children: [b.jsxs("header", { className: "topbar", children: [b.jsxs("div", { className: "workspace-heading", children: [!A && b.jsx("button", { className: "icon-btn", "aria-label": "展开侧栏", onClick: () => k(true), children: b.jsx(AM, { size: 18 }) }), b.jsx("span", { className: "breadcrumb", children: "我的画布" }), b.jsx(Wu, { className: "breadcrumb-arrow", size: 14 }), b.jsx("input", { className: "workspace-name", "aria-label": "画布名称", value: (Ee == null ? void 0 : Ee.name) || "", onChange: (Z) => Ye((ue) => ({ ...ue, name: Z.target.value })) }), b.jsxs("span", { className: `save-indicator ${S === "保存失败" ? "failed" : ""}`, children: [S === "已保存" && b.jsx(Ym, { size: 12 }), " ", S] })] }), b.jsxs("div", { className: "topbar-actions", children: [Ee && b.jsx(lcCanvasCommands,{children:[b.jsxs("button", { className: "toolbar-main", onClick: () => bt(), children: [b.jsx(Vl, { size: 16 }), "新建输入"] }), b.jsxs("button",{className:"toolbar-align","aria-label":"粘贴图片",title:"从系统剪贴板粘贴图片 · Ctrl / Cmd + V",onClick:pasteClipboard,children:[b.jsx(R2,{size:15}),"粘贴图片"]}), b.jsxs("button",{className:"toolbar-align","aria-label":"导入图片",title:"一次选择多张图片",onClick:()=>canvasImageInput.current?.click(),children:[b.jsx(vc,{size:15}),"导入图片"]}), b.jsx("span", { className: "control-divider" }), b.jsx("button", { className: "icon-btn", "aria-label": "新建图片输入", title: "新建图片输入", onClick: () => bt("image"), children: b.jsx(vc, { size: 17 }) }), b.jsx("button", { className: "icon-btn", "aria-label": "新建笔记", title: "新建笔记", onClick: () => bt("chat", void 0, true), children: b.jsx(q2, { size: 17 }) }), b.jsx("span", { className: "control-divider" }), b.jsx("button", { className: "icon-btn", "aria-label": "撤销", title: "撤销 Ctrl+Z", disabled: !(_n != null && _n.undo.length), onClick: () => It(), children: b.jsx(HM, { size: 17 }) }), b.jsx("button", { className: "icon-btn", "aria-label": "重做", title: "重做 Ctrl+Shift+Z", disabled: !(_n != null && _n.redo.length), onClick: () => It(true), children: b.jsx(jM, { size: 17 }) }), b.jsx("span",{className:"control-divider"}), b.jsxs("button",{className:"toolbar-align","aria-label":"整理布局",title:"选中多个节点时对齐所选，否则整理整个画布",disabled:!Ee || Ee.nodes.length<2,onClick:alignNodes,children:[b.jsx(lc16AlignIcon,{size:16}),"整理布局"]})]}),S === "保存失败" && b.jsx("button", { className: "btn compact", onClick: () => {
+  }, children: [b.jsx(Xm, { size: 17 }), b.jsx("span", { children: "服务商与设置" })] }), b.jsxs("button", { className: "workspace-row", onClick: () => J(true), children: [b.jsx(jv, { size: 17 }), b.jsx("span", { children: "快捷键" })] }), b.jsxs("div", { className: "local-note", children: [b.jsx(SM, { size: 13 }), b.jsx("span", { children: "保存在本机 · 可完整迁移" })] })] })] }), b.jsxs("main", { className: "workspace-main", children: [b.jsxs("header", { className: "topbar", children: [b.jsxs("div", { className: "workspace-heading", children: [!A && b.jsx("button", { className: "icon-btn", "aria-label": "展开侧栏", onClick: () => k(true), children: b.jsx(AM, { size: 18 }) }), b.jsx("span", { className: "breadcrumb", children: "我的画布" }), b.jsx(Wu, { className: "breadcrumb-arrow", size: 14 }), b.jsx("input", { className: "workspace-name", "aria-label": "画布名称", value: (Ee == null ? void 0 : Ee.name) || "", onChange: (Z) => Ye((ue) => ({ ...ue, name: Z.target.value })) }), b.jsxs("span", { className: `save-indicator ${S === "保存失败" ? "failed" : ""}`, children: [S === "已保存" && b.jsx(Ym, { size: 12 }), " ", S] })] }), b.jsxs("div", { className: "topbar-actions", children: [Ee && b.jsx(lcCanvasCommands,{children:[b.jsxs("button", { className: "toolbar-main", onClick: () => bt(), children: [b.jsx(Vl, { size: 16 }), "新建输入"] }), b.jsxs("button",{className:"toolbar-align","aria-label":"粘贴图片",title:"从系统剪贴板粘贴图片 · Ctrl / Cmd + V",onClick:pasteClipboard,children:[b.jsx(R2,{size:15}),"粘贴图片"]}), b.jsxs("button",{className:"toolbar-align","aria-label":"导入图片",title:"一次选择多张图片",onClick:()=>canvasImageInput.current?.click(),children:[b.jsx(vc,{size:15}),"导入图片"]}), b.jsxs("button",{className:"toolbar-align","aria-label":"导入文档",onClick:()=>canvasDocumentInput.current?.click(),children:[b.jsx(q2,{size:15}),"导入文档"]}), b.jsx("span", { className: "control-divider" }), b.jsx("button", { className: "icon-btn", "aria-label": "新建图片输入", title: "新建图片输入", onClick: () => bt("image"), children: b.jsx(vc, { size: 17 }) }), b.jsx("button", { className: "icon-btn", "aria-label": "新建笔记", title: "新建笔记", onClick: () => bt("chat", void 0, true), children: b.jsx(q2, { size: 17 }) }), b.jsx("span", { className: "control-divider" }), b.jsx("button", { className: "icon-btn", "aria-label": "撤销", title: "撤销 Ctrl+Z", disabled: !(_n != null && _n.undo.length), onClick: () => It(), children: b.jsx(HM, { size: 17 }) }), b.jsx("button", { className: "icon-btn", "aria-label": "重做", title: "重做 Ctrl+Shift+Z", disabled: !(_n != null && _n.redo.length), onClick: () => It(true), children: b.jsx(jM, { size: 17 }) }), b.jsx("span",{className:"control-divider"}), b.jsxs("button",{className:"toolbar-align","aria-label":"整理布局",title:"选中多个节点时对齐所选，否则整理整个画布",disabled:!Ee || Ee.nodes.length<2,onClick:alignNodes,children:[b.jsx(lc16AlignIcon,{size:16}),"整理布局"]})]}),S === "保存失败" && b.jsx("button", { className: "btn compact", onClick: () => {
     Le.current && $m("未保存草稿-" + Le.current.name + ".json", JSON.stringify(Le.current, null, 2));
   }, children: "保存草稿副本" }), b.jsx("span", { className: "direct-badge", children: "原文 · 原图直传" }), b.jsxs("button", { className: "btn compact", title: "导出画布结构 JSON；完整迁移请使用设置中的备份", onClick: async () => {
     await Ke(), Le.current && $m(`${Le.current.name}.json`, JSON.stringify(Le.current, null, 2));
@@ -20910,7 +20967,7 @@ function V8() {
     var ue;
     snapBypass.current=Z.altKey;
     Ab(Z.target) || (ue = pasteSink.current || de.current) == null || ue.focus({ preventScroll: true });
-  }, children: [b.jsx("div",{ref:pasteSink,contentEditable:true,suppressContentEditableWarning:true,className:"canvas-paste-target",tabIndex:-1,"aria-hidden":true,onInput:event=>{event.currentTarget.textContent="";}}), b.jsx("input",{ref:canvasImageInput,hidden:true,type:"file",accept:"image/png,image/jpeg,image/webp",multiple:true,"aria-label":"导入多张图片",onChange:event=>{const files=lc15ClipboardImages({files:event.currentTarget.files});event.currentTarget.value="";if(files.length)pasteImages(files);}}), Ee ? b.jsx(iE.Provider, { value: Za, children: b.jsxs(RA, { onlyRenderVisibleElements:true, nodes: Ee.nodes.map(lcCanvasFlowNode), edges: Ee.edges.map(edge => {
+  }, children: [b.jsx("div",{ref:pasteSink,contentEditable:true,suppressContentEditableWarning:true,className:"canvas-paste-target",tabIndex:-1,"aria-hidden":true,onInput:event=>{event.currentTarget.textContent="";}}), b.jsx("input",{ref:canvasImageInput,hidden:true,type:"file",accept:"image/png,image/jpeg,image/webp",multiple:true,"aria-label":"导入多张图片",onChange:event=>{const files=lc15ClipboardImages({files:event.currentTarget.files});event.currentTarget.value="";if(files.length)pasteImages(files);}}), b.jsx("input",{ref:canvasDocumentInput,hidden:true,type:"file",accept:window.LightCanvasDocuments.accept,multiple:true,"aria-label":"导入多个文档",onChange:event=>{const files=Array.from(event.currentTarget.files||[]);event.currentTarget.value="";if(files.length)pasteImages(files);}}), Ee ? b.jsx(iE.Provider, { value: Za, children: b.jsxs(RA, { onlyRenderVisibleElements:true, nodes: Ee.nodes.map(lcCanvasFlowNode), edges: Ee.edges.map(edge => {
   const source = lcNodeIndex.get(edge.source), target = lcNodeIndex.get(edge.target);
   const images = window.LightCanvasImages.idsOf(source,c);
   return {...edge, ...(edge.data?.kind==='generation'?{style:{...edge.style,stroke:'#777',strokeWidth:1.5}}:{}), type: "default", pathOptions: {curvature: 0.3}, label: edge.data?.kind === "generation" ? undefined : target?.data.mode === "image" && images?.length ? "参考图" : edge.label};
@@ -20940,13 +20997,13 @@ function V8() {
     Rc().then((Z) => s(Z.providers)).catch((Z) => be(Z.message));
   }, onRestored: () => {
     Ze(false).then(() => be("已恢复为新画布")).catch((Z) => be(Z.message)), Y(false);
-  } }), M && b.jsx(rE, { runId: typeof M==='string'?M:M.runId, initialAssetId:typeof M==='object'?M.assetId:undefined, onClose: () => B(null) }), U && b.jsx(hc, { title: "重新发送新的请求", onClose: qn, children: b.jsxs("div", { className: "preview-content", children: [b.jsx("p", { children: "这个输入有一条结果未知的请求，上游可能已处理并计费。请先到服务商核实；重新发送会创建另一条请求，并可能再次计费。" }), b.jsxs("div", { className: "confirm-actions", children: [b.jsx("button", { className: "btn", onClick: qn, children: "返回核实" }), b.jsx("button", { className: "btn primary", onClick: () => {
+  } }), documentPreview && b.jsx(lcDocumentViewer,{assetId:documentPreview,assets:m,onClose:()=>setDocumentPreview(null)}), M && b.jsx(rE, { runId: typeof M==='string'?M:M.runId, initialAssetId:typeof M==='object'?M.assetId:undefined, onClose: () => B(null) }), U && b.jsx(hc, { title: "重新发送新的请求", onClose: qn, children: b.jsxs("div", { className: "preview-content", children: [b.jsx("p", { children: "这个输入有一条结果未知的请求，上游可能已处理并计费。请先到服务商核实；重新发送会创建另一条请求，并可能再次计费。" }), b.jsxs("div", { className: "confirm-actions", children: [b.jsx("button", { className: "btn", onClick: qn, children: "返回核实" }), b.jsx("button", { className: "btn primary", onClick: () => {
     const Z = U;
     X(null), gi(Z, true);
-  }, children: "确认发送新请求" })] })] }) }), ie && b.jsx(hc, { title: ie.title, onClose: ul, wide: true, children: b.jsxs("div", { className: "preview-content", children: [b.jsx("p", { className: "muted", children: "以下内容由当前节点和明确选择的来源组成。提示词不润色，图片不压缩；查看不会调用 API。" }), b.jsx("pre", { className: "request-json", children: JSON.stringify(ie.data, null, 2) }), b.jsxs("button", { className: "btn", onClick: () => Ql(JSON.stringify(ie.data, null, 2)), children: [b.jsx(Xa, { size: 15 }), "复制请求记录"] })] }) }), G && b.jsx(hc, { title: "操作与快捷键", onClose: Li, children: b.jsxs("div", { className: "help-content", children: [b.jsxs("div", { className: "help-intro", children: [b.jsx(Mv, { size: 22 }), b.jsx("p", { children: "鼠标与触摸板都能完整操作。拖动标题栏移动节点，正文可以正常选字。" })] }), b.jsxs("label", { className: "field", children: ["滚动方式", b.jsxs("select", { className: "select", value: _, onChange: (Z) => {
+  }, children: "确认发送新请求" })] })] }) }), ie && b.jsx(hc, { title: ie.title, onClose: ul, wide: true, children: b.jsxs("div", { className: "preview-content", children: [b.jsx("p", { className: "muted", children: "以下内容由当前节点和明确选择的来源组成。提示词不润色，图片与文档按原文件发送；查看不会调用 API。" }), b.jsx("pre", { className: "request-json", children: JSON.stringify(ie.data, null, 2) }), b.jsxs("button", { className: "btn", onClick: () => Ql(JSON.stringify(ie.data, null, 2)), children: [b.jsx(Xa, { size: 15 }), "复制请求记录"] })] }) }), G && b.jsx(hc, { title: "操作与快捷键", onClose: Li, children: b.jsxs("div", { className: "help-content", children: [b.jsxs("div", { className: "help-intro", children: [b.jsx(Mv, { size: 22 }), b.jsx("p", { children: "鼠标与触摸板都能完整操作。拖动标题栏移动节点，正文可以正常选字。" })] }), b.jsxs("label", { className: "field", children: ["滚动方式", b.jsxs("select", { className: "select", value: _, onChange: (Z) => {
     const ue = Z.target.value;
     se(ue), localStorage.setItem("lc-scroll-mode", ue), V2("/preferences", { key: "scroll-mode", value: ue }).catch((ge) => be(ge.message));
-  }, children: [b.jsx("option", { value: "pan", children: "滚动平移（触摸板推荐）" }), b.jsx("option", { value: "zoom", children: "滚动缩放（鼠标习惯）" })] })] }), b.jsx("dl", { className: "shortcut-list", children: [["发送当前提示词", "Ctrl / Cmd + Enter"], ["新建输入 / 继续追问", "N / B"], ["展开阅读", "E"], ["删除所选节点或线", "Delete / Backspace"], ["撤销 / 重做", "Ctrl + Z / Ctrl + Shift + Z"], ["多选", "Shift + 点击"], ["框选", "左键拖动空白处，碰到即选中"], ["拖动对齐", "默认吸附边缘/中心，Alt 临时自由拖动"], ["复制 / 粘贴节点", "Ctrl / Cmd + C / V"], ["粘贴图片为参考节点", "Ctrl / Cmd + V"], ["适合全部 / 定位所选", "F / Shift + F"], ["恢复 100%", "0"], ["移动画布", "中键拖动 / Space + 拖动"], ["缩放", "捏合 / Ctrl + 滚轮"], ["取消当前操作", "Esc"]].map(([Z, ue]) => b.jsxs("div", { children: [b.jsx("dt", { children: Z }), b.jsx("dd", { children: b.jsx("kbd", { children: ue }) })] }, Z)) }), b.jsx("p", { className: "small muted", children: "输入文字、中文选字或阅读窗口打开时，画布快捷键暂停。普通 Enter 换行。连线也可先点输出端，再点目标输入端。" })] }) })] }) : b.jsxs("div", { className: "app-loading", children: [b.jsx("div", { className: "brand-mark", children: b.jsx(wr, { size: 21 }) }), b.jsx("p", { children: "正在打开你的画布…" })] });
+  }, children: [b.jsx("option", { value: "pan", children: "滚动平移（触摸板推荐）" }), b.jsx("option", { value: "zoom", children: "滚动缩放（鼠标习惯）" })] })] }), b.jsx("dl", { className: "shortcut-list", children: [["发送当前提示词", "Ctrl / Cmd + Enter"], ["新建输入 / 继续追问", "N / B"], ["展开阅读", "E"], ["删除所选节点或线", "Delete / Backspace"], ["撤销 / 重做", "Ctrl + Z / Ctrl + Shift + Z"], ["多选", "Shift + 点击"], ["框选", "左键拖动空白处，碰到即选中"], ["拖动对齐", "默认吸附边缘/中心，Alt 临时自由拖动"], ["复制 / 粘贴节点", "Ctrl / Cmd + C / V"], ["粘贴图片 / 文档为参考节点", "Ctrl / Cmd + V"], ["适合全部 / 定位所选", "F / Shift + F"], ["恢复 100%", "0"], ["移动画布", "中键拖动 / Space + 拖动"], ["缩放", "捏合 / Ctrl + 滚轮"], ["取消当前操作", "Esc"]].map(([Z, ue]) => b.jsxs("div", { children: [b.jsx("dt", { children: Z }), b.jsx("dd", { children: b.jsx("kbd", { children: ue }) })] }, Z)) }), b.jsx("p", { className: "small muted", children: "输入文字、中文选字或阅读窗口打开时，画布快捷键暂停。普通 Enter 换行。连线也可先点输出端，再点目标输入端。" })] }) })] }) : b.jsxs("div", { className: "app-loading", children: [b.jsx("div", { className: "brand-mark", children: b.jsx(wr, { size: 21 }) }), b.jsx("p", { children: "正在打开你的画布…" })] });
 }
 const Mb = location.pathname.match(/^\/reader\/([^/]+)$/);
 Kk.createRoot(document.getElementById("root")).render(Mb ? b.jsx(rE, { runId: decodeURIComponent(Mb[1]), standalone: true }) : b.jsx(T2, { children: b.jsx(V8, {}) }));
