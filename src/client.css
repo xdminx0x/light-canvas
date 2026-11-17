@@ -244,3 +244,12 @@
 .document-viewer ::selection{background:#dcdcd8;color:#111}
 @media(max-width:760px){.document-viewer-overlay{padding:12px}.document-viewer{height:94dvh}.document-viewer>header{padding:16px;gap:12px}.document-viewer h2{font-size:16px}.document-viewer-actions{gap:12px}.document-viewer-actions a{font-size:12px}.document-prose{padding:24px 20px}.document-preview-state{padding:24px}}
 @media(max-width:480px){.document-viewer>header{align-items:flex-start}.document-viewer-actions{flex-direction:column-reverse;align-items:flex-end;gap:12px}.document-viewer-actions a{white-space:nowrap}}
+
+/* Selection changes the node frame, while original image colors remain intact. */
+.canvas-card.is-selected{background:#dededb;border-color:#92928f}
+.canvas-card.is-selected>.node-drag-handle{background:#d6d6d2;border-bottom-color:#c7c7c2;border-radius:10px 10px 0 0}
+.history-viewer-navigation{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 16px;font-size:12px;color:#666}
+.history-viewer-navigation button{font:inherit;color:#303030;white-space:nowrap}
+.history-viewer-navigation button:disabled{opacity:.4;cursor:default}
+.history-viewer-navigation span{font-variant-numeric:tabular-nums;text-align:center}
+@media(max-width:480px){.history-viewer-navigation{gap:8px;font-size:11px}.history-viewer-navigation span{max-width:14ch}}

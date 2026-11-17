@@ -142,6 +142,13 @@
   },true);
 
   function hydrateUrls() { for (const [id,blob] of memoryAssets) if (!urls.has(id)) urls.set(id,URL.createObjectURL(blob)); }
+  async function recoverInterruptedRuns() {
+    let changed=false;
+    for(const run of all('run'))if(['queued','running'].includes(run.status)&&!active.has(run.id)){
+      run.status='unknown';run.error='页面已重新加载，无法继续确认原请求状态或服务商是否已处理、计费。请先核实，再决定是否重新发送。';run.updatedAt=now();run.seq=(run.seq||0)+1;changed=true;
+    }
+    if(changed)await save();
+  }
   async function installFolder(handle, fromImport = false) {
     folder = handle; assetFolder = await folder.getDirectoryHandle('assets', {create:true});
     thumbnailFolder = await folder.getDirectoryHandle('thumbnails', {create:true});
@@ -158,6 +165,7 @@
       }
       await save();
     }
+    await recoverInterruptedRuns();
     gate.hidden = true; readyResolve();
     // Remembering a folder is optional: browser storage must not block opening it.
     saveHandle(folder).catch(()=>{});
@@ -166,6 +174,7 @@
     folder=null;assetFolder=null;thumbnailFolder=undefined;
     state = clone(seed.state);
     for (const [id,b64] of Object.entries(seed.assets)) memoryAssets.set(id,new Blob([b64ToBytes(b64)],{type:state.asset[id]?.mime || 'application/octet-stream'}));
+    await recoverInterruptedRuns();
     gate.hidden = true; readyResolve();
   }
   let choosingFolder=false;

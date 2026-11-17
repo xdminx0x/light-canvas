@@ -1,4 +1,4 @@
-# 轻画布开发交接 · 3.0.0
+# 轻画布开发交接 · 3.0.1
 
 详见CHANGELOG.md。运行时双击index.html，选择本机数据文件夹。仓库不包含用户数据；首次使用新建数据文件夹并配置 API。不要改回必须命令启动的服务器。
 
@@ -92,3 +92,11 @@ Python 3 执行 src/rebuild.py；在src 目录 npm test。Node/Playwright/Chrome
 - 文档总量校验按请求中的实际文件出现次数计算，包含对话历史；不自动切换协议/模型或静默忽略文档。禁止付费 API 回归。
 - 文档预览复用安全 Markdown 渲染；PDF 使用本地 Blob iframe，DOCX 只解析 word/document.xml 的文字，不执行宏/外链；关闭释放 Blob URL 并恢复焦点。旧 DOC 提供原文件下载。
 - documents.mjs 覆盖原始字节、多格式附件、预览与关闭、剪贴板节点、实际端口连接/断开/重连、换文件与删除、刷新恢复、历史和清理保留、协议与大小限制。
+
+## 图片选择与历史切换 · 3.0.1
+
+- 细节等级复用 params.quality，不引入另一套参数；nE 与 lc13NodeOptions 同步展示，后端仍按原值发送 quality。
+- 点击结果图片先更新 selected，再调用原 read；参考图片在 mousedown 选中后继续走原链接读取原始字节，保留拖拽。选中只改变节点底色，不滤镜处理原图。
+- lcImageHistory 维护全画布图片顺序并处理方向键；rE 按 runId+assetId 挂载，使图片与详情一致。filmstrip 同步图库选中位置。首尾不循环，输入控件/修饰键/IME 不拦截。
+- recoverInterruptedRuns 在安装数据文件夹或临时种子后，将本页不在 active 中的 queued/running 改为 unknown 并保存；保留记录及已有结果，不恢复/重发网络请求。已有手动再次发送确认继续生效。
+- image-controls.mjs 覆盖参数与摘要、原有点击打开、选中灰底、跨生成记录的图库切换、边界与输入框方向键、中断记录持久化且零外部请求。

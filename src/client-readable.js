@@ -19554,12 +19554,12 @@ function nE({ model: e12, params: i, onChange: l, compact: a = false, disabled: 
       ] }),
       b.jsxs("div", { className: "image-option-row image-option-secondary", children: [
         b.jsxs("label", { className: "image-option-field", children: [
-          b.jsx("span", { children: "生成质量" }),
-          capability.qualities ? b.jsxs("select", { className: "nodrag nowheel", "aria-label": "图片生成质量", value: i.quality ?? "", onChange: (event) => l({ quality: event.target.value || void 0 }), children: [
+          b.jsx("span", { children: "细节等级" }),
+          capability.qualities ? b.jsxs("select", { className: "nodrag nowheel", "aria-label": "细节等级", value: i.quality ?? "", onChange: (event) => l({ quality: event.target.value || void 0 }), children: [
             b.jsx("option", { value: "", children: "接口默认" }),
             capability.qualities.map((quality) => b.jsx("option", { value: quality, children: M8[quality] || quality }, quality)),
             retainedQuality && b.jsx("option", { value: i.quality, children: `${i.quality} · 待调整` })
-          ] }) : b.jsx("input", { className: "nodrag nowheel", "aria-label": "图片生成质量", placeholder: "接口默认", value: i.quality ?? "", onChange: (event) => l({ quality: event.target.value || void 0 }) })
+          ] }) : b.jsx("input", { className: "nodrag nowheel", "aria-label": "细节等级", placeholder: "接口默认", value: i.quality ?? "", onChange: (event) => l({ quality: event.target.value || void 0 }) })
         ] }),
         b.jsxs("label", { className: "image-option-field", children: [
           b.jsx("span", { children: "生成张数" }),
@@ -19687,6 +19687,7 @@ function lc13NodeOptions({data,children}) {
   if(image) {
     parts.push(selection.ratio === "auto" ? "智能比例" : selection.ratio);
     parts.push(selection.tier === "auto" ? (selection.dimensions ? selection.dimensions.width+"×"+selection.dimensions.height : "自动尺寸") : selection.tier.toUpperCase());
+    parts.push("细节 "+(M8[data.params?.quality]||data.params?.quality||"接口默认"));
   }
   const label=image ? "模型与图片设置" : "聊天模型";
   return b.jsxs("details",{className:"node-configuration nodrag nowheel",children:[
@@ -19711,7 +19712,7 @@ function lc15ReferenceImageNode({id,data,selected,context}) {
       ]})
     ]}),
     b.jsxs("div",{className:"nodrag nopan reference-image-body",children:[
-      ...(data.assetIds||[]).map(assetId=>b.jsx("a",{href:window.__lcAssetUrl(assetId),target:"_blank",rel:"noopener noreferrer",className:"reference-image-preview",title:"打开原图",draggable:true,onDragStart:event=>{event.dataTransfer.setData("application/x-light-canvas-reference",id);event.dataTransfer.effectAllowed="link";},children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(assetId),alt:context.assets[assetId]?.name||"粘贴的参考图片",draggable:false})},assetId)),
+      ...(data.assetIds||[]).map(assetId=>b.jsx("a",{href:window.__lcAssetUrl(assetId),target:"_blank",rel:"noopener noreferrer",className:"reference-image-preview",title:"打开原图",onMouseDown:event=>context.select(id,event),draggable:true,onDragStart:event=>{event.dataTransfer.setData("application/x-light-canvas-reference",id);event.dataTransfer.effectAllowed="link";},children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(assetId),alt:context.assets[assetId]?.name||"粘贴的参考图片",draggable:false})},assetId)),
       b.jsx("p",{className:"reference-image-caption",children:(alias?"@"+alias+" · ":"")+"原图 · 可连线或在提示词中 @ 引用"}),
       b.jsxs("button",{className:"reference-image-button",onClick:()=>context.follow(id),children:[b.jsx(wM,{size:15}),"作为参考图",b.jsx("span",{children:"继续生图"})]})
     ]}),
@@ -19794,7 +19795,7 @@ const iE = L.createContext(null), D8 = { queued: "排队中", running: "正在�
     return (E = s.current) == null ? void 0 : E.click();
   }, children: b.jsx(MM, { size: 16 }) }), b.jsx("button", { className: "node-icon", title: "查看实际发送内容", "aria-label": "查看实际发送内容", onClick: () => o.inspect(i), children: b.jsx(H2, { size: 16 }) }), b.jsx("span", { className: "input-shortcut", children: o.uploading[i] ? "正在保存附件…" : "Ctrl ↵ 发送" })] }), b.jsx("button", { className: "send-button", title: "发送原文与所选附件", "aria-label": "发送", disabled: !!o.uploading[i] || !l.prompt.trim() && !l.assetIds.length && !l.documentIds?.length && !window.LightCanvasDocuments.linked(o.workspace,i).length && !lc12HasLinkedImages(i, o), onClick: () => o.send(i), children: b.jsx(O2, { size: 18 }) })] }), b.jsx("input", { hidden: true, ref: s, type: "file", "aria-label":"选择节点附件", accept: l.mode==="chat"?"image/png,image/jpeg,image/webp,"+window.LightCanvasDocuments.accept:"image/png,image/jpeg,image/webp", multiple: true, onChange: (E) => {
     o.upload(i, Array.from(E.target.files || [])), E.target.value = "";
-  } })] })] }) : b.jsxs("div", { className: "nodrag result-body", children: [b.jsxs("div", { className: "result-meta", children: [b.jsxs("span", { className: "run-status", children: [d ? b.jsx(CM, { size: 13, className: "spin" }) : (c == null ? void 0 : c.status) === "completed" ? b.jsx(xM, { size: 13 }) : b.jsx(jp, { size: 13 }), " ", c ? D8[c.status] : "等待提交"] }), b.jsx("span", { children: (c == null ? void 0 : c.providerName) || "" })] }), l.kind === "image" ? (v = c == null ? void 0 : c.assetIds) != null && v.length ? b.jsx("div", { className: "image-grid", children: c.assetIds.map((E) => b.jsx("button", { className: "image-preview", draggable:true, title:"点击查看大图，或拖到输入节点作为参考", onDragStart:event => {event.dataTransfer.setData("application/x-light-canvas-reference",i);event.dataTransfer.effectAllowed="link";}, onClick: () => l.runId && o.read(l.runId, c?.assetIds?.[0]), children: b.jsx(lcAssetImage, { src: `/api/assets/${E}`, alt: "生成结果", draggable:false }) }, E)) }) : b.jsxs("div", { className: "image-wait", children: [b.jsx(vc, { size: 30 }), b.jsx("span", { children: d ? "正在等待图片返回…" : "图片会显示在这里" })] }) : b.jsxs("div", { className: "result-preview nowheel", children: [b.jsx(JS, { text: ((S = c == null ? void 0 : c.text) == null ? void 0 : S.slice(0, 2e3)) || (d ? "正在连接，等待响应…" : "") }), ((c == null ? void 0 : c.text.length) || 0) > 2e3 && b.jsx("div", { className: "preview-cut", children: "卡片显示部分内容，展开阅读全文" })] }), l.kind === "image" && b.jsx(lc12ImageDelivery, {run:c}), l.kind === "image" && c?.status === "completed" && c.assetIds?.length > 0 && b.jsxs("button", {className:"reference-image-button", onClick:() => o.follow(i), children:[b.jsx(wM,{size:15}),"作为参考图", b.jsx("span",{children:"继续生图"})]}), (c == null ? void 0 : c.error) && b.jsx("p", { className: "run-error", children: c.error }), b.jsxs("div", { className: "result-actions", children: [b.jsxs("button", { className: "text-btn", onClick: () => l.runId && o.read(l.runId, c?.assetIds?.[0]), children: [b.jsx(U2, { size: 14 }), "展开阅读"] }), b.jsxs("div", { className: "result-action-icons", children: [b.jsx("button", { className: "node-icon", title: "独立窗口查看", "aria-label": "独立窗口查看", onClick: () => {
+  } })] })] }) : b.jsxs("div", { className: "nodrag result-body", children: [b.jsxs("div", { className: "result-meta", children: [b.jsxs("span", { className: "run-status", children: [d ? b.jsx(CM, { size: 13, className: "spin" }) : (c == null ? void 0 : c.status) === "completed" ? b.jsx(xM, { size: 13 }) : b.jsx(jp, { size: 13 }), " ", c ? D8[c.status] : "等待提交"] }), b.jsx("span", { children: (c == null ? void 0 : c.providerName) || "" })] }), l.kind === "image" ? (v = c == null ? void 0 : c.assetIds) != null && v.length ? b.jsx("div", { className: "image-grid", children: c.assetIds.map((E) => b.jsx("button", { className: "image-preview", draggable:true, title:"点击查看大图，或拖到输入节点作为参考", onDragStart:event => {event.dataTransfer.setData("application/x-light-canvas-reference",i);event.dataTransfer.effectAllowed="link";}, onClick: event => {o.select(i,event);l.runId&&o.read(l.runId,c?.assetIds?.[0]);}, children: b.jsx(lcAssetImage, { src: `/api/assets/${E}`, alt: "生成结果", draggable:false }) }, E)) }) : b.jsxs("div", { className: "image-wait", children: [b.jsx(vc, { size: 30 }), b.jsx("span", { children: d ? "正在等待图片返回…" : "图片会显示在这里" })] }) : b.jsxs("div", { className: "result-preview nowheel", children: [b.jsx(JS, { text: ((S = c == null ? void 0 : c.text) == null ? void 0 : S.slice(0, 2e3)) || (d ? "正在连接，等待响应…" : "") }), ((c == null ? void 0 : c.text.length) || 0) > 2e3 && b.jsx("div", { className: "preview-cut", children: "卡片显示部分内容，展开阅读全文" })] }), l.kind === "image" && b.jsx(lc12ImageDelivery, {run:c}), l.kind === "image" && c?.status === "completed" && c.assetIds?.length > 0 && b.jsxs("button", {className:"reference-image-button", onClick:() => o.follow(i), children:[b.jsx(wM,{size:15}),"作为参考图", b.jsx("span",{children:"继续生图"})]}), (c == null ? void 0 : c.error) && b.jsx("p", { className: "run-error", children: c.error }), b.jsxs("div", { className: "result-actions", children: [b.jsxs("button", { className: "text-btn", onClick: () => l.runId && o.read(l.runId, c?.assetIds?.[0]), children: [b.jsx(U2, { size: 14 }), "展开阅读"] }), b.jsxs("div", { className: "result-action-icons", children: [b.jsx("button", { className: "node-icon", title: "独立窗口查看", "aria-label": "独立窗口查看", onClick: () => {
     if (l.runId) {
       const E = window.open(`/reader/${l.runId}`, `reader-${l.runId}`, "width=1120,height=850");
       E ? E.opener = null : o.read(l.runId, c?.assetIds?.[0]);
@@ -19965,17 +19966,18 @@ function lcImageCostDetails({run}) {
     q.pricing.source&&b.jsx("a",{href:q.pricing.source,target:"_blank",rel:"noopener noreferrer",children:"查看 OpenAI 官方价格"})
   ]})]});
 }
-function lcImageResult({run,initialAssetId}) {
+function lcImageResult({run,initialAssetId,navigation}) {
   const ids=run.assetIds||[],[selected,setSelected]=L.useState(()=>Math.max(0,ids.indexOf(initialAssetId))),[loaded,setLoaded]=L.useState(''),[failed,setFailed]=L.useState('');
   const index=Math.min(selected,Math.max(0,ids.length-1)),id=ids[index],delivery=run.imageDelivery?.[index],name=delivery?.finalName||`生成图片 ${index+1}`,snap=run.snapshot||{},usage=run.usage||{};
   const input=usage.input_tokens??usage.prompt_tokens,output=usage.output_tokens??usage.completion_tokens,total=usage.total_tokens??(typeof input==='number'&&typeof output==='number'?input+output:undefined);
   const tokenDetail=[typeof input==='number'?`输入 ${input.toLocaleString()}`:'',typeof output==='number'?`输出 ${output.toLocaleString()}`:''].filter(Boolean).join(' · ');
   return b.jsxs("div",{className:"image-result-layout",children:[
+    navigation&&b.jsxs("nav",{className:"history-viewer-navigation","aria-label":"历史图片切换",children:[b.jsx("button",{type:"button",className:"text-btn","aria-label":"上一张图片",disabled:navigation.index<=0,onClick:()=>navigation.move(-1),children:"← 上一张"}),b.jsx("span",{children:`${navigation.index+1} / ${navigation.total} · ← →`}),b.jsx("button",{type:"button",className:"text-btn","aria-label":"下一张图片",disabled:navigation.index>=navigation.total-1,onClick:()=>navigation.move(1),children:"下一张 →"})]}),
     id?b.jsxs("figure",{className:"image-result-figure",children:[
       b.jsxs("div",{className:"image-result-stage",children:[b.jsx("a",{className:"image-result-open",href:window.__lcAssetUrl(id),target:"_blank",rel:"noopener noreferrer","data-image-viewer":"true",title:"在新窗口查看图片，点击切换原始分辨率","aria-label":`在新窗口查看图片：${name}`,children:b.jsx(lcAssetImage,{key:id,src:window.__lcAssetUrl(id),alt:name,original:true,onLoad:()=>setLoaded(id),onError:()=>setFailed(id)})}),loaded!==id&&b.jsx("span",{className:"image-load-state",role:failed===id?'alert':'status',children:failed===id?"无法读取图片，请检查 data 文件夹中的原图文件。":"正在加载原图…"})]}),
       b.jsxs("figcaption",{children:[b.jsxs("div",{className:"image-result-caption",children:[b.jsx("span",{title:name,children:name}),delivery?.width&&delivery?.height&&b.jsx("small",{children:`${delivery.width} × ${delivery.height}`})]}),b.jsx(lcCopyImageButton,{assetId:id}),b.jsxs("a",{className:"image-download",href:window.__lcAssetUrl(id),download:name,children:[b.jsx(Xa,{size:15}),"下载图片"]})]})
     ]}):b.jsx("div",{className:"image-result-stage is-empty",children:b.jsx("p",{className:"image-detail-muted",children:_m(run)?"正在等待图片返回…":"这次请求没有生成图片"})}),
-    ids.length>1&&b.jsx("div",{className:"image-result-filmstrip","aria-label":"本次生成图片",children:ids.map((assetId,i)=>b.jsx("button",{type:"button","aria-label":`查看第 ${i+1} 张图片`,"aria-pressed":index===i,onClick:()=>setSelected(i),children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(assetId),alt:`生成图片 ${i+1}`})},assetId))}),
+    ids.length>1&&b.jsx("div",{className:"image-result-filmstrip","aria-label":"本次生成图片",children:ids.map((assetId,i)=>b.jsx("button",{type:"button","aria-label":`查看第 ${i+1} 张图片`,"aria-pressed":index===i,onClick:()=>navigation?navigation.select(assetId):setSelected(i),children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(assetId),alt:`生成图片 ${i+1}`})},assetId))}),
     delivery?.warning&&b.jsx("p",{role:"status",className:"image-detail-muted",children:delivery.warning}),
     delivery?.method==="local-resize"&&b.jsx("p",{className:"image-detail-muted",children:"旧版记录：此图曾经过本地缩放或补边，画面比例不代表 API 原生出图比例。"}),
     b.jsx(lcGenerationDetails,{run}),
@@ -19999,6 +20001,17 @@ function lcImageHistory({workspace, runs, assets, onDeleteImage}) {
   };
   const images=Object.values(runs).filter(run=>run.workspaceId===workspace?.id&&run.mode==='image').sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).flatMap(run=>(run.assetIds||[]).map((id,index)=>({run,id,index})));
   L.useEffect(()=>{if(open&&!selection&&grid.current)grid.current.scrollTop=scroll.current},[open,selection]);
+  const current=selection?images.findIndex(image=>image.run.id===selection.runId&&image.id===selection.assetId):-1;
+  const move=delta=>{const image=images[current+delta];if(image)setSelection({runId:image.run.id,assetId:image.id});};
+  L.useEffect(()=>{
+    if(!open||!selection)return;
+    const key=event=>{
+      if(event.isComposing||event.altKey||event.ctrlKey||event.metaKey||event.target.closest?.('input,textarea,select,[contenteditable="true"]'))return;
+      if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();event.stopImmediatePropagation();move(event.key==='ArrowLeft'?-1:1);}
+    };
+    window.addEventListener('keydown',key,true);return()=>window.removeEventListener('keydown',key,true);
+  },[open,selection,images.length,current]);
+
   return b.jsxs(b.Fragment,{children:[b.jsxs("button",{className:"workspace-row",disabled:!workspace,onClick:()=>{setLimit(60);scroll.current=0;setOpen(true)},children:[b.jsx(vc,{size:17}),b.jsx("span",{children:"生图历史"})]}),
     open&&!selection&&b.jsx(hc,{title:"生图历史",wide:true,onClose:close,children:b.jsxs("div",{className:"image-history",ref:grid,onScroll:e=>{scroll.current=e.currentTarget.scrollTop},children:[
       deleteError&&b.jsx("p",{className:"history-delete-error",role:"alert",children:deleteError}),
@@ -20007,11 +20020,11 @@ function lcImageHistory({workspace, runs, assets, onDeleteImage}) {
         const name=assets[id]?.name||run.imageDelivery?.[index]?.finalName||"生成图片";
         return b.jsxs("div",{className:"history-tile",children:[b.jsxs("button",{type:"button",className:"history-result",disabled:!!deleting,onClick:()=>setSelection({runId:run.id,assetId:id}),"aria-label":`查看图片结果：${name}`,children:[b.jsx("span",{className:"history-image-mat",children:b.jsx(lcAssetImage,{src:window.__lcAssetUrl(id),alt:name})}),b.jsx("span",{className:"history-image-name",title:name,children:name})]}),b.jsx("button",{type:"button",className:"history-delete",disabled:!!deleting||_m(run),title:deleting===id?"正在删除…":"永久删除图片","aria-label":`永久删除图片：${name}`,onClick:()=>removeImage(run,id,name),children:b.jsx(deleting===id?CM:bc,{size:14,className:deleting===id?'spin':undefined})})]},run.id+':'+id);})}):b.jsxs("div",{className:"history-empty",children:[b.jsx(vc,{size:32,strokeWidth:1.3}),b.jsx("p",{children:"还没有生成的图片"}),b.jsx("small",{children:"在当前画布生成图片后，会自动保存在这里。"})]}),
       images.length>limit&&b.jsx("button",{className:"btn history-more",onClick:()=>setLimit(n=>n+60),children:"显示更多图片"})
-    ]})}),open&&selection&&b.jsx(rE,{key:selection.runId,runId:selection.runId,initialAssetId:selection.assetId,onClose:back})
+    ]})}),open&&selection&&b.jsx(rE,{key:selection.runId+":"+selection.assetId,runId:selection.runId,initialAssetId:selection.assetId,onClose:back,imageNavigation:{index:current,total:images.length,move,select:id=>setSelection({runId:selection.runId,assetId:id})}})
   ]});
 }
 
-function rE({ runId: e12, onClose: i, standalone: l = false, initialAssetId }) {
+function rE({ runId: e12, onClose: i, standalone: l = false, initialAssetId, imageNavigation }) {
   const [a, o] = L.useState(null), [s, c] = L.useState(""), [d, m] = L.useState(true), [g, y] = L.useState(""), [p, x] = L.useState(false), [v, S] = L.useState(() => {
     try {
       const ce = Number(localStorage.getItem("light-canvas:reader-font"));
@@ -20222,7 +20235,7 @@ function rE({ runId: e12, onClose: i, standalone: l = false, initialAssetId }) {
   }, children: b.jsx(Yl, { size: 17 }) })] }), g && b.jsx("p", { className: "lc-reader-banner", role: "status", children: g }), b.jsx("div", { className: "lc-reader-scroll", ref: V, tabIndex: 0, "aria-label": "结果正文", onScroll: () => {
     const ce = V.current;
     ce && (he.current = ce.scrollHeight - ce.clientHeight - ce.scrollTop < 48, he.current && re(false), clearTimeout(me.current), me.current = setTimeout(Ee, 500));
-  }, children: b.jsxs("article", { className: "lc-reader-article", ref: $, style: { fontSize: v }, children: [d && b.jsx("p", { className: "lc-reader-empty", role: "status", children: "正在读取结果…" }), s && b.jsxs("div", { className: "lc-reader-empty", role: "alert", children: [b.jsx("p", { children: s }), b.jsx("button", { className: "lc-reader-text-button", onClick: () => D((ce) => ce + 1), children: "重新读取" })] }), (a == null ? void 0 : a.error) && b.jsxs("div", { className: "lc-reader-error", role: "alert", children: [b.jsx("strong", { children: Tb[a.status] }), b.jsx("p", { children: a.error }), b.jsx("p", { children: "已返回的内容保留在下方。" })] }), a?.mode === "image" && b.jsx(lcImageResult,{key:a.id,run:a,initialAssetId}), (a == null ? void 0 : a.text) && b.jsx(JS, { text: a.text }), a == null || a.mode === "image" ? void 0 : a.assetIds.map((ce, K) => b.jsxs("figure", { className: "lc-reader-image", children: [b.jsx("a", { href: `/api/assets/${encodeURIComponent(ce)}`, target: "_blank", rel: "noopener noreferrer", title: "查看原始图片", children: b.jsx(lcAssetImage, { src: `/api/assets/${encodeURIComponent(ce)}`, alt: `生成结果 ${K + 1}`, original:true, onLoad: () => {
+  }, children: b.jsxs("article", { className: "lc-reader-article", ref: $, style: { fontSize: v }, children: [d && b.jsx("p", { className: "lc-reader-empty", role: "status", children: "正在读取结果…" }), s && b.jsxs("div", { className: "lc-reader-empty", role: "alert", children: [b.jsx("p", { children: s }), b.jsx("button", { className: "lc-reader-text-button", onClick: () => D((ce) => ce + 1), children: "重新读取" })] }), (a == null ? void 0 : a.error) && b.jsxs("div", { className: "lc-reader-error", role: "alert", children: [b.jsx("strong", { children: Tb[a.status] }), b.jsx("p", { children: a.error }), b.jsx("p", { children: "已返回的内容保留在下方。" })] }), a?.mode === "image" && b.jsx(lcImageResult,{key:a.id,run:a,initialAssetId,navigation:imageNavigation}), (a == null ? void 0 : a.text) && b.jsx(JS, { text: a.text }), a == null || a.mode === "image" ? void 0 : a.assetIds.map((ce, K) => b.jsxs("figure", { className: "lc-reader-image", children: [b.jsx("a", { href: `/api/assets/${encodeURIComponent(ce)}`, target: "_blank", rel: "noopener noreferrer", title: "查看原始图片", children: b.jsx(lcAssetImage, { src: `/api/assets/${encodeURIComponent(ce)}`, alt: `生成结果 ${K + 1}`, original:true, onLoad: () => {
     te.current && qe(te.current);
   } }) }), b.jsxs("figcaption", { children: [b.jsxs("span", { children: [a.imageDelivery?.[K]?.finalName || `图片 ${K + 1}`] }), b.jsxs("a", { href: `/api/assets/${encodeURIComponent(ce)}?download=1`, download: true, children: [b.jsx(Xa, { size: 15 }), "下载原图"] })] })] }, ce)), a && !a.text && !a.assetIds.length && !a.error && b.jsx("p", { className: "lc-reader-empty", children: Nm(a) ? "这条结果没有返回正文或图片。" : "等待 API 返回内容…" })] }) }), ie && b.jsxs("button", { className: "lc-reader-latest", onClick: () => {
     V.current && (V.current.scrollTop = V.current.scrollHeight), he.current = true, re(false);
@@ -20934,7 +20947,7 @@ function V8() {
   },[Pt,pasteImages,pasteClipboard,In,be,m,pastePlacement]);
 
   const lcNodeIndex = L.useMemo(()=>new Map((Ee?.nodes||[]).map(n=>[n.id,n])),[Ee?.nodes]);
-  const Za = L.useMemo(() => ({ readDocument:setDocumentPreview, pasteImages, mentionImage, removeImage, providers: o, runs: c, assets: m, workspace: Ee, reference: Dt, unlink: edgeId => Ye(w => ({...w, edges:w.edges.filter(edge => edge.id !== edgeId)}), true), uploading: pe, update: zt, send: gi, stop: Hr, read: (runId,assetId)=>B(assetId?{runId,assetId}:runId), follow: dn, remove: Ft, inspect: rl, copy: Ql, upload: Br, settings: () => {
+  const Za = L.useMemo(() => ({ select:(nodeId,event)=>{event.stopPropagation();const multi=event.shiftKey;Ye(w=>({...w,nodes:w.nodes.map(node=>({...node,selected:node.id===nodeId?(multi?!node.selected:true):multi?node.selected:false})),edges:w.edges.map(edge=>({...edge,selected:false}))}));}, readDocument:setDocumentPreview, pasteImages, mentionImage, removeImage, providers: o, runs: c, assets: m, workspace: Ee, reference: Dt, unlink: edgeId => Ye(w => ({...w, edges:w.edges.filter(edge => edge.id !== edgeId)}), true), uploading: pe, update: zt, send: gi, stop: Hr, read: (runId,assetId)=>B(assetId?{runId,assetId}:runId), follow: dn, remove: Ft, inspect: rl, copy: Ql, upload: Br, settings: () => {
     Ke().then(() => Y(true)).catch(() => {
     });
   }, showParams: D }), [o, c, m, pe, zt, gi, Hr, dn, Ft, rl, Ql, Br, Ee, Dt, Ye, pasteImages, mentionImage, removeImage]), Bt = Ee == null ? void 0 : Ee.nodes.find((Z) => Z.id === j), al = (Ee == null ? void 0 : Ee.edges.filter((Z) => {
