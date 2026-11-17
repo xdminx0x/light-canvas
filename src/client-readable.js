@@ -19706,7 +19706,7 @@ function lc15ReferenceImageNode({id,data,selected,context}) {
     b.jsxs("header",{className:"node-drag-handle",children:[
       b.jsxs("span",{className:"node-title",children:[b.jsx(vc,{size:16}),b.jsx("span",{children:data.label||"参考图片"})]}),
       b.jsxs("span",{className:"node-tools nodrag",children:[
-        b.jsx("button",{className:"node-icon",title:"引用到其他节点","aria-label":"引用到其他节点",onClick:()=>context.connect(id),children:b.jsx(B2,{size:14})}),
+
         b.jsx("button",{className:"node-icon",title:"删除节点","aria-label":"删除节点",onClick:()=>context.remove(id),children:b.jsx(bc,{size:14})})
       ]})
     ]}),
@@ -19728,7 +19728,7 @@ const iE = L.createContext(null), D8 = { queued: "排队中", running: "正在�
     o.update(i, { mode: E, providerId: (A == null ? void 0 : A.id) || "demo", model: (A == null ? void 0 : A.protocol) === "mock" ? E === "chat" ? "demo-chat" : "demo-image" : (A == null ? void 0 : A.models[0]) || "" });
   }, x = g ? b.jsx(q2, { size: 16 }) : l.kind === "image" || l.mode === "image" ? b.jsx(vc, { size: 16 }) : b.jsx(wr, { size: 16 });
   if(l.kind === "image" && !l.runId) return b.jsx(lc15ReferenceImageNode,{id:i,data:l,selected:a,context:o});
-  return b.jsxs("article", { className: `canvas-card ${a ? "is-selected" : ""} ${m ? "input-card" : g ? "note-card" : "output-card"}`, "data-testid": `node-${l.kind}`, children: [b.jsx(Ya, { type: "target", position: Ie.Left, className: "canvas-handle", isConnectable: m }), b.jsxs("header", { className: "node-drag-handle", children: [b.jsxs("span", { className: "node-title", children: [x, b.jsx("span", { children: l.label || "未命名节点" })] }), b.jsxs("span", { className: "node-tools nodrag", children: [b.jsx("button", { className: "node-icon", title: "引用到其他节点", "aria-label": "引用到其他节点", onClick: () => o.connect(i), children: b.jsx(B2, { size: 14 }) }), b.jsx("button", { className: "node-icon", title: "删除节点", "aria-label": "删除节点", onClick: () => o.remove(i), children: b.jsx(bc, { size: 14 }) })] })] }), m || g ? b.jsxs("div", { className: "nodrag node-editor", onDrop: (E) => {
+  return b.jsxs("article", { className: `canvas-card ${a ? "is-selected" : ""} ${m ? "input-card" : g ? "note-card" : "output-card"}`, "data-testid": `node-${l.kind}`, children: [b.jsx(Ya, { type: "target", position: Ie.Left, className: "canvas-handle", isConnectable: m }), b.jsxs("header", { className: "node-drag-handle", children: [b.jsxs("span", { className: "node-title", children: [x, b.jsx("span", { children: l.label || "未命名节点" })] }), b.jsxs("span", { className: "node-tools nodrag", children: [b.jsx("button", { className: "node-icon", title: "删除节点", "aria-label": "删除节点", onClick: () => o.remove(i), children: b.jsx(bc, { size: 14 }) })] })] }), m || g ? b.jsxs("div", { className: "nodrag node-editor", onDrop: (E) => {
     const reference = E.dataTransfer.getData("application/x-light-canvas-reference");
     if (reference) { E.preventDefault(); E.stopPropagation(); o.reference(reference, i); return; }
     E.dataTransfer.files.length && (E.preventDefault(), E.stopPropagation(), o.upload(i, Array.from(E.dataTransfer.files)));
@@ -20415,11 +20415,14 @@ function lcSnapGuides({guides,viewport}) {
   const {x,y,zoom}=viewport;
   return b.jsx("svg",{className:"canvas-snap-guides","aria-hidden":true,children:guides.map((g,i)=>b.jsx("line",g.axis==='x'?{x1:g.value*zoom+x,x2:g.value*zoom+x,y1:g.start*zoom+y,y2:g.end*zoom+y}:{y1:g.value*zoom+y,y2:g.value*zoom+y,x1:g.start*zoom+x,x2:g.end*zoom+x},i))});
 }
+function lcCanvasHistory(workspace) {
+  return {nodes:workspace.nodes.map(node=>{if(!['input','note'].includes(node.data.kind))return node;const {prompt,systemPrompt,...data}=node.data;return {...node,data};}),edges:workspace.edges};
+}
 function V8() {
-  const [snapGuides,setSnapGuides]=L.useState([]),snapBypass=L.useRef(false),canvasPointer=L.useRef(null);
+  const [snapGuides,setSnapGuides]=L.useState([]),snapBypass=L.useRef(false),canvasPointer=L.useRef(null),latestPrompts=L.useRef(new Map());
   L.useEffect(()=>{const key=event=>{snapBypass.current=event.altKey;if(event.altKey)setSnapGuides([]);},blur=()=>{snapBypass.current=false;setSnapGuides([]);};window.addEventListener('keydown',key);window.addEventListener('keyup',key);window.addEventListener('blur',blur);return()=>{window.removeEventListener('keydown',key);window.removeEventListener('keyup',key);window.removeEventListener('blur',blur);};},[]);
 
-  const [e12, i] = L.useState([]), [l, a] = L.useState(""), [o, s] = L.useState([]), [c, d] = L.useState({}), [m, g] = L.useState({}), [y, p] = L.useState(false), [x, v] = L.useState(""), [S, E] = L.useState("已保存"), [N, C] = L.useState(""), [A, k] = L.useState(() => window.innerWidth > 760), [T, Y] = L.useState(false), [M, B] = L.useState(null), [G, J] = L.useState(false), [U, X] = L.useState(null), [ie, re] = L.useState(null), [j, D] = L.useState(null), [H, V] = L.useState(null), [$, F] = L.useState(""), [_, se] = L.useState(() => localStorage.getItem("lc-scroll-mode") === "zoom" ? "zoom" : "pan"), [he, R] = L.useState(false), O = L.useRef(false), te = L.useRef(/* @__PURE__ */ new Map()), [pe, me] = L.useState({}), ne = L.useRef({}), xe = L.useRef({}), Se = L.useRef(/* @__PURE__ */ new Set()), fe = L.useRef(null), [Ce, Te] = L.useState(0), Ae = Eo(), Ee = e12.find((Z) => Z.id === l), qe = L.useRef(e12);
+  const [e12, i] = L.useState([]), [l, a] = L.useState(""), [o, s] = L.useState([]), [c, d] = L.useState({}), [m, g] = L.useState({}), [y, p] = L.useState(false), [x, v] = L.useState(""), [S, E] = L.useState("已保存"), [N, C] = L.useState(""), [A, k] = L.useState(() => window.innerWidth > 760), [T, Y] = L.useState(false), [M, B] = L.useState(null), [G, J] = L.useState(false), [U, X] = L.useState(null), [ie, re] = L.useState(null), [j, D] = L.useState(null), [$, F] = L.useState(""), [_, se] = L.useState(() => localStorage.getItem("lc-scroll-mode") === "zoom" ? "zoom" : "pan"), [he, R] = L.useState(false), O = L.useRef(false), te = L.useRef(/* @__PURE__ */ new Map()), [pe, me] = L.useState({}), ne = L.useRef({}), xe = L.useRef({}), Se = L.useRef(/* @__PURE__ */ new Set()), fe = L.useRef(null), [Ce, Te] = L.useState(0), Ae = Eo(), Ee = e12.find((Z) => Z.id === l), qe = L.useRef(e12);
   qe.current = e12;
   const Le = L.useRef(Ee);
   Le.current = Ee;
@@ -20431,6 +20434,7 @@ function V8() {
     F(Z), clearTimeout(Ht.current), Ht.current = setTimeout(() => F(""), 5200);
   }, []), Ze = L.useCallback(async (Z = true) => {
     const ue = await Rc();
+    for(const workspace of ue.workspaces)for(const node of workspace.nodes)if(['input','note'].includes(node.data.kind))latestPrompts.current.set(node.id,{prompt:node.data.prompt||'',systemPrompt:node.data.systemPrompt});
     return ne.current = Object.fromEntries(ue.workspaces.map((ge) => [ge.id, ge.version || 0])), Se.current.clear(), s(ue.providers), d(Object.fromEntries(ue.runs.map((ge) => [ge.id, ge]))), g(Object.fromEntries(ue.assets.map((ge) => [ge.id, ge]))), Ne.current = true, i(ue.workspaces), a((ge) => {
       var _e;
       return Z && ue.workspaces.some((ze) => ze.id === ge) ? ge : ((_e = ue.workspaces[0]) == null ? void 0 : _e.id) || "";
@@ -20502,13 +20506,14 @@ function V8() {
       return;
     fe.current = null;
     const ue = _t.current[Z.id] || { undo: [], redo: [] };
-    ue.undo.push({ nodes: Z.nodes, edges: Z.edges }), ue.undo.length > 60 && ue.undo.shift(), ue.redo = [], _t.current[Z.id] = ue, Te((ge) => ge + 1);
+    ue.undo.push(lcCanvasHistory(Z)), ue.undo.length > 60 && ue.undo.shift(), ue.redo = [], _t.current[Z.id] = ue, Te((ge) => ge + 1);
   }, []), Ye = L.useCallback((Z, ue = false, ge = false) => {
     const _e = Le.current;
     if (!_e)
       return;
     ue && lt();
-    const ze = window.LightCanvasImages.assign(Z(_e),pt.current);
+    const ze = window.LightCanvasImages.assign(Z(_e),pt.current,_e);
+    for(const node of ze.nodes)if(['input','note'].includes(node.data.kind))latestPrompts.current.set(node.id,{prompt:node.data.prompt||'',systemPrompt:node.data.systemPrompt});
     ge || (xe.current[_e.id] = (xe.current[_e.id] || 0) + 1, Se.current.add(_e.id)), Le.current = ze, i((je) => je.map((He) => He.id === ze.id ? ze : He));
   }, [lt]), It = L.useCallback((Z = false) => {
     const ue = Le.current;
@@ -20518,11 +20523,12 @@ function V8() {
     if (!ge)
       return;
     const ze = (Z ? ge.redo : ge.undo).pop();
-    ze && ((Z ? ge.undo : ge.redo).push({ nodes: ue.nodes, edges: ue.edges }), Ye((je) => ({ ...je, ...ze })), Te((je) => je + 1));
+    ze && ((Z ? ge.undo : ge.redo).push(lcCanvasHistory(ue)), Ye((je) => ({ ...je, ...ze, nodes:ze.nodes.map(node=>['input','note'].includes(node.data.kind)?{...node,data:{...node.data,...(latestPrompts.current.get(node.id)||{prompt:''})}}:node) })), Te((je) => je + 1));
   }, [Ye]), zt = L.useCallback((Z, ue) => {
     var _e;
     if (O.current)
       return;
+    if(Object.keys(ue).every(key=>key==='prompt'||key==='systemPrompt')){Ye(workspace=>({...workspace,nodes:workspace.nodes.map(node=>node.id===Z?{...node,data:{...node.data,...ue}}:node)}));return}
     const ge = Date.now();
     (((_e = fe.current) == null ? void 0 : _e.id) !== Z || ge - fe.current.at > 1e3) && lt(), fe.current = { id: Z, at: ge }, Ye((ze) => ({ ...ze, nodes: ze.nodes.map((je) => je.id === Z ? { ...je, data: { ...je.data, ...ue } } : je) }));
   }, [Ye, lt]), Oi = L.useCallback(() => {
@@ -20547,7 +20553,7 @@ function V8() {
         be("这个连接不可用：目标需为输入节点，且不能重复或形成循环。");
         return;
       }
-      Ye((ze) => ({ ...ze, edges: [...ze.edges, Em(Z, ue, ge)] }), true), V(null), be(ge === "history" ? "已连接分支历史" : "已添加引用；发送前可查看实际内容");
+      Ye((ze) => ({ ...ze, edges: [...ze.edges, Em(Z, ue, ge)] }), true), be(ge === "history" ? "已连接分支历史" : "已添加引用；发送前可查看实际内容");
     }
   }, [Ye, be]), dn = L.useCallback((Z) => {
     const workspace = Le.current, source = workspace?.nodes.find(node => node.id === Z);
@@ -20709,7 +20715,7 @@ function V8() {
       } catch (Z) {
         be(Z.message);
       }
-  }, [Ke, be, e12.length]), Pt = T || !!U || !!M || G || !!ie || !!H;
+  }, [Ke, be, e12.length]), Pt = T || !!U || !!M || G || !!ie;
 
 
   const alignNodes=L.useCallback(()=>{
@@ -20791,7 +20797,7 @@ function V8() {
         }
         else if (!_e) {
           const Re = ge.nodes.find((Ue) => Ue.selected);
-          ze === "delete" || ze === "backspace" ? (ue.preventDefault(), Ft()) : ze === "n" ? (ue.preventDefault(), bt()) : ze === "b" && (Re != null && Re.data.runId) ? (ue.preventDefault(), dn(Re.id)) : ze === "c" && Re ? (ue.preventDefault(), V(Re.id)) : ze === "e" && (Re != null && Re.data.runId) ? (ue.preventDefault(), B(Re.data.kind==='image'?{runId:Re.data.runId,assetId:window.LightCanvasImages.idsOf(Re,pt.current)[0]}:Re.data.runId)) : ze === "f" ? (ue.preventDefault(), Ae.fitView({ nodes: ue.shiftKey ? ge.nodes.filter((Ue) => Ue.selected).map((Ue) => ({ id: Ue.id })) : void 0, padding: 0.2, maxZoom: 1.2, duration: 200 })) : ze === "0" ? (ue.preventDefault(), Ae.zoomTo(1)) : ue.key === "?" ? (ue.preventDefault(), J(true)) : ze === "escape" && (D(null), Ye((Ue) => ({ ...Ue, nodes: Ue.nodes.map((tt) => ({ ...tt, selected: false })), edges: Ue.edges.map((tt) => ({ ...tt, selected: false })) })));
+          ze === "delete" || ze === "backspace" ? (ue.preventDefault(), Ft()) : ze === "n" ? (ue.preventDefault(), bt()) : ze === "b" && (Re != null && Re.data.runId) ? (ue.preventDefault(), dn(Re.id)) : ze === "e" && (Re != null && Re.data.runId) ? (ue.preventDefault(), B(Re.data.kind==='image'?{runId:Re.data.runId,assetId:window.LightCanvasImages.idsOf(Re,pt.current)[0]}:Re.data.runId)) : ze === "f" ? (ue.preventDefault(), Ae.fitView({ nodes: ue.shiftKey ? ge.nodes.filter((Ue) => Ue.selected).map((Ue) => ({ id: Ue.id })) : void 0, padding: 0.2, maxZoom: 1.2, duration: 200 })) : ze === "0" ? (ue.preventDefault(), Ae.zoomTo(1)) : ue.key === "?" ? (ue.preventDefault(), J(true)) : ze === "escape" && (D(null), Ye((Ue) => ({ ...Ue, nodes: Ue.nodes.map((tt) => ({ ...tt, selected: false })), edges: Ue.edges.map((tt) => ({ ...tt, selected: false })) })));
         }
       }
     };
@@ -20825,7 +20831,7 @@ function V8() {
   const removeImage=L.useCallback((nodeId,assetId)=>{
     Ye(workspace=>{
       const image=window.LightCanvasImages.catalog(workspace,pt.current,m).find(item=>item.assetId===assetId);
-      return {...workspace,nodes:workspace.nodes.map(node=>node.id===nodeId?{...node,data:{...node.data,assetIds:(node.data.assetIds||[]).filter(id=>id!==assetId),excludedImageIds:[...new Set([...(node.data.excludedImageIds||[]),assetId])],prompt:image?node.data.prompt.replace(new RegExp('@(?:图片|图)'+image.label.slice(1)+'(?!\\d)','g'),''):node.data.prompt}}:node)};
+      return {...workspace,edges:workspace.edges.filter(edge=>{if(edge.target!==nodeId)return true;const ids=window.LightCanvasImages.idsOf(workspace.nodes.find(n=>n.id===edge.source),pt.current);return !(ids.length===1&&ids[0]===assetId)}),nodes:workspace.nodes.map(node=>node.id===nodeId?{...node,data:{...node.data,assetIds:(node.data.assetIds||[]).filter(id=>id!==assetId),excludedImageIds:[...new Set([...(node.data.excludedImageIds||[]),assetId])],prompt:image?node.data.prompt.replace(new RegExp('@(?:图片|图)'+image.label.slice(1)+'(?!\\d)','g'),''):node.data.prompt}}:node)};
     },true);
   },[Ye,m]);
   const pasteSerial=L.useRef(0),pasteFallback=L.useRef(null),canvasImageInput=L.useRef(null),pasteSink=L.useRef(null);
@@ -20858,7 +20864,7 @@ function V8() {
   },[Pt,pasteImages,pasteClipboard,In,be,m,pastePlacement]);
 
   const lcNodeIndex = L.useMemo(()=>new Map((Ee?.nodes||[]).map(n=>[n.id,n])),[Ee?.nodes]);
-  const Za = L.useMemo(() => ({ pasteImages, mentionImage, removeImage, providers: o, runs: c, assets: m, workspace: Ee, reference: Dt, unlink: edgeId => Ye(w => ({...w, edges:w.edges.filter(edge => edge.id !== edgeId)}), true), uploading: pe, update: zt, send: gi, stop: Hr, read: (runId,assetId)=>B(assetId?{runId,assetId}:runId), follow: dn, remove: Ft, inspect: rl, copy: Ql, connect: V, upload: Br, settings: () => {
+  const Za = L.useMemo(() => ({ pasteImages, mentionImage, removeImage, providers: o, runs: c, assets: m, workspace: Ee, reference: Dt, unlink: edgeId => Ye(w => ({...w, edges:w.edges.filter(edge => edge.id !== edgeId)}), true), uploading: pe, update: zt, send: gi, stop: Hr, read: (runId,assetId)=>B(assetId?{runId,assetId}:runId), follow: dn, remove: Ft, inspect: rl, copy: Ql, upload: Br, settings: () => {
     Ke().then(() => Y(true)).catch(() => {
     });
   }, showParams: D }), [o, c, m, pe, zt, gi, Hr, dn, Ft, rl, Ql, Br, Ee, Dt, Ye, pasteImages, mentionImage, removeImage]), Bt = Ee == null ? void 0 : Ee.nodes.find((Z) => Z.id === j), al = (Ee == null ? void 0 : Ee.edges.filter((Z) => {
@@ -20870,7 +20876,7 @@ function V8() {
   })) || [], Ri = e12.filter((Z) => !N || Z.name.includes(N)), Jn = N ? Ee == null ? void 0 : Ee.nodes.filter((Z) => {
     var ue;
     return [Z.data.label, Z.data.prompt, Z.data.runId ? (ue = c[Z.data.runId]) == null ? void 0 : ue.text : ""].some((ge) => ge == null ? void 0 : ge.toLowerCase().includes(N.toLowerCase()));
-  }).slice(0, 12) : [], _n = l ? _t.current[l] : void 0, qn = L.useCallback(() => X(null), []), ul = L.useCallback(() => re(null), []), Li = L.useCallback(() => J(false), []), Zl = L.useCallback(() => V(null), []), Hi = Object.values(c).filter((Z) => Z.workspaceId === l).filter(_m);
+  }).slice(0, 12) : [], _n = l ? _t.current[l] : void 0, qn = L.useCallback(() => X(null), []), ul = L.useCallback(() => re(null), []), Li = L.useCallback(() => J(false), []), Hi = Object.values(c).filter((Z) => Z.workspaceId === l).filter(_m);
   return y ? x ? b.jsxs("div", { className: "app-loading", children: [b.jsx(jp, { size: 28 }), b.jsx("h2", { children: "未连接到本地服务" }), b.jsx("p", { children: x }), b.jsx("button", { className: "btn primary", onClick: () => location.reload(), children: "重新连接" })] }) : b.jsxs("div", { inert: he || void 0, className: `app-shell ${A ? "" : "sidebar-collapsed"}`, children: [A && b.jsxs("aside", { className: "sidebar", children: [b.jsxs("div", { className: "brand", children: [b.jsx("div", { className: "brand-mark", children: b.jsx(wr, { size: 19 }) }), b.jsx("span", { title: `版本 ${window.__lcAppVersion}`, children: "轻画布" }), b.jsx("button", { className: "icon-btn", "aria-label": "收起侧栏", onClick: () => k(false), children: b.jsx(TM, { size: 17 }) })] }), b.jsxs("button", { className: "new-workspace btn", onClick: Nn, children: [b.jsx(Vl, { size: 16 }), "新建画布"] }), b.jsxs("label", { className: "sidebar-search", children: [b.jsx(Oc, { size: 15 }), b.jsx("input", { "aria-label": "搜索画布与节点", placeholder: "搜索画布与节点", value: N, onChange: (Z) => C(Z.target.value) })] }), b.jsxs("div", { className: "sidebar-section-title", children: ["我的画布 ", b.jsx("span", { children: e12.length })] }), b.jsxs("nav", { className: "workspace-list", children: [Ri.map((Z) => b.jsxs("button", { className: `workspace-row ${Z.id === l ? "active" : ""}`, onClick: () => nn(Z.id), children: [b.jsx(bM, { size: 16 }), b.jsx("span", { children: Z.name }), Z.id === l && b.jsx(Wu, { size: 13 })] }, Z.id)), !Ri.length && b.jsx("p", { className: "small muted", children: "没有匹配的画布" })] }), !!(Jn != null && Jn.length) && b.jsxs("div", { className: "node-search-results", children: [b.jsx("div", { className: "sidebar-section-title", children: "当前画布内" }), Jn.map((Z) => b.jsxs("button", { className: "workspace-row", onClick: () => Ae.fitView({ nodes: [{ id: Z.id }], maxZoom: 1, padding: 0.5, duration: 200 }), children: [b.jsx(Oc, { size: 13 }), b.jsx("span", { children: Z.data.prompt.slice(0, 24) || Z.data.label })] }, Z.id))] }), b.jsxs("div", { className: "sidebar-bottom", children: [b.jsx(lcImageHistory,{workspace:Ee,runs:c,assets:m,onDeleteImage:async(runId,assetId)=>{
     if(O.current)throw Error("请等待当前操作结束后重试。");
     O.current=true;
@@ -20907,9 +20913,7 @@ function V8() {
     },false,Z.every(ue=>ue.type==='dimensions'||ue.type==='select'));
   }, onEdgesChange: (Z) => Ye((ue) => ({ ...ue, edges: n2(Z, ue.edges) }), false, Z.every((ue) => ue.type === "select")), onNodeDragStart: lt, onConnect: (Z) => {
     Z.source && Z.target && Dt(Z.source, Z.target);
-  }, isValidConnection: (Z) => !!Le.current && Cm(Le.current, Z.source, Z.target), onPaneClick: () => D(null), onNodeClick: (Z, ue) => {
-    H && ue.data.kind === "input" && Dt(H, ue.id);
-  }, onMoveEnd: (Z, ue) => Ye((ge) => ({ ...ge, viewport: ue })), defaultViewport: Ee.viewport || { x: 70, y: 75, zoom: 1 }, deleteKeyCode: null, panOnDrag: [1], selectionOnDrag: true, selectionMode: co.Partial, selectionKeyCode: "Shift", multiSelectionKeyCode: "Shift", panActivationKeyCode: "Space", panOnScroll: _ === "pan", zoomOnScroll: _ === "zoom", zoomOnPinch: true, zoomOnDoubleClick: false, minZoom: 0.1, maxZoom: 2, connectionRadius: 28, connectOnClick: true, proOptions: { hideAttribution: false }, children: [b.jsx(VA, { variant: nl.Dots, gap: 22, size: 1, color: "#d7d7d7" }), b.jsx(Nr, { position: "bottom-left", children: b.jsx("div", { className: "canvas-bottom", children: b.jsx(q8, {}) }) }), b.jsx(Nr, { position: "bottom-right", children: b.jsxs("button", { className: "canvas-help", onClick: () => J(true), children: [b.jsx(jv, { size: 14 }), b.jsx("span", { children: "左键框选 · 中键平移" })] }) })] }, Ee.id) }) : b.jsxs("div", { className: "empty-canvas", children: [b.jsx(wr, { size: 32 }), b.jsx("h2", { children: "打开一张新的画布" }), b.jsxs("button", { className: "btn primary", onClick: Nn, children: [b.jsx(Vl, { size: 16 }), "新建画布"] })] }), !!snapGuides.length && b.jsx(lcSnapGuides,{guides:snapGuides,viewport:Ae.getViewport()}), (Ee == null ? void 0 : Ee.nodes.length) === 0 && b.jsxs("div", { className: "empty-canvas", children: [b.jsx(wr, { size: 30 }), b.jsx("h2", { children: "想法，从一张卡片开始" }), b.jsx("p", { children: "双击空白处，或添加一个输入节点。" }), b.jsxs("button", { className: "btn primary", onClick: () => bt(), children: [b.jsx(Vl, { size: 16 }), "新建输入"] })] }), !!Hi.length && b.jsxs("div", { className: "running-strip", children: [b.jsx("span", { className: "pulse-dot" }), Hi.length, " 个任务处理中", b.jsx("button", { onClick: () => {
+  }, isValidConnection: (Z) => !!Le.current && Cm(Le.current, Z.source, Z.target), onPaneClick: () => D(null), onMoveEnd: (Z, ue) => Ye((ge) => ({ ...ge, viewport: ue })), defaultViewport: Ee.viewport || { x: 70, y: 75, zoom: 1 }, deleteKeyCode: null, panOnDrag: [1], selectionOnDrag: true, selectionMode: co.Partial, selectionKeyCode: "Shift", multiSelectionKeyCode: "Shift", panActivationKeyCode: "Space", panOnScroll: _ === "pan", zoomOnScroll: _ === "zoom", zoomOnPinch: true, zoomOnDoubleClick: false, minZoom: 0.1, maxZoom: 2, connectionRadius: 28, connectOnClick: true, proOptions: { hideAttribution: false }, children: [b.jsx(VA, { variant: nl.Dots, gap: 22, size: 1, color: "#d7d7d7" }), b.jsx(Nr, { position: "bottom-left", children: b.jsx("div", { className: "canvas-bottom", children: b.jsx(q8, {}) }) }), b.jsx(Nr, { position: "bottom-right", children: b.jsxs("button", { className: "canvas-help", onClick: () => J(true), children: [b.jsx(jv, { size: 14 }), b.jsx("span", { children: "左键框选 · 中键平移" })] }) })] }, Ee.id) }) : b.jsxs("div", { className: "empty-canvas", children: [b.jsx(wr, { size: 32 }), b.jsx("h2", { children: "打开一张新的画布" }), b.jsxs("button", { className: "btn primary", onClick: Nn, children: [b.jsx(Vl, { size: 16 }), "新建画布"] })] }), !!snapGuides.length && b.jsx(lcSnapGuides,{guides:snapGuides,viewport:Ae.getViewport()}), (Ee == null ? void 0 : Ee.nodes.length) === 0 && b.jsxs("div", { className: "empty-canvas", children: [b.jsx(wr, { size: 30 }), b.jsx("h2", { children: "想法，从一张卡片开始" }), b.jsx("p", { children: "双击空白处，或添加一个输入节点。" }), b.jsxs("button", { className: "btn primary", onClick: () => bt(), children: [b.jsx(Vl, { size: 16 }), "新建输入"] })] }), !!Hi.length && b.jsxs("div", { className: "running-strip", children: [b.jsx("span", { className: "pulse-dot" }), Hi.length, " 个任务处理中", b.jsx("button", { onClick: () => {
     const Z = Hi[0], ue = Ee == null ? void 0 : Ee.nodes.find((ge) => ge.data.runId === Z.id);
     ue && Ae.fitView({ nodes: [{ id: ue.id }], maxZoom: 1, padding: 0.6, duration: 200 });
   }, children: "查看" })] })] }), Bt && b.jsxs("aside", { className: "inspector", children: [b.jsxs("header", { children: [b.jsxs("h2", { children: [b.jsx(I2, { size: 16 }), "节点设置"] }), b.jsx("button", { className: "icon-btn", "aria-label": "关闭节点设置", onClick: () => D(null), children: b.jsx(Yl, { size: 17 }) })] }), b.jsxs("div", { className: "inspector-body", children: [b.jsxs("label", { className: "field", children: ["节点名称", b.jsx("input", { className: "input", value: Bt.data.label, onChange: (Z) => zt(Bt.id, { label: Z.target.value }) })] }), b.jsx("div", { className: "section-heading", children: "本次上下文" }), b.jsx("p", { className: "small muted", children: "只发送当前输入，以及下面明确连接的内容。" }), al.length ? al.map((Z, ue) => {
@@ -20926,14 +20930,10 @@ function V8() {
   } }), M && b.jsx(rE, { runId: typeof M==='string'?M:M.runId, initialAssetId:typeof M==='object'?M.assetId:undefined, onClose: () => B(null) }), U && b.jsx(hc, { title: "重新发送新的请求", onClose: qn, children: b.jsxs("div", { className: "preview-content", children: [b.jsx("p", { children: "这个输入有一条结果未知的请求，上游可能已处理并计费。请先到服务商核实；重新发送会创建另一条请求，并可能再次计费。" }), b.jsxs("div", { className: "confirm-actions", children: [b.jsx("button", { className: "btn", onClick: qn, children: "返回核实" }), b.jsx("button", { className: "btn primary", onClick: () => {
     const Z = U;
     X(null), gi(Z, true);
-  }, children: "确认发送新请求" })] })] }) }), ie && b.jsx(hc, { title: ie.title, onClose: ul, wide: true, children: b.jsxs("div", { className: "preview-content", children: [b.jsx("p", { className: "muted", children: "以下内容由当前节点和明确选择的来源组成。提示词不润色，图片不压缩；查看不会调用 API。" }), b.jsx("pre", { className: "request-json", children: JSON.stringify(ie.data, null, 2) }), b.jsxs("button", { className: "btn", onClick: () => Ql(JSON.stringify(ie.data, null, 2)), children: [b.jsx(Xa, { size: 15 }), "复制请求记录"] })] }) }), H && b.jsx(hc, { title: "选择引用目标", onClose: Zl, children: b.jsxs("div", { className: "connect-options", children: [b.jsx("p", { className: "muted", children: "将选中节点的内容引用到一个输入节点，连接后不会自动发送。" }), Ee == null ? void 0 : Ee.nodes.filter((Z) => Cm(Ee, H, Z.id)).map((Z) => b.jsxs("button", { className: "connect-option", onClick: () => Dt(H, Z.id), children: [b.jsx(wr, { size: 16 }), b.jsxs("span", { children: [Z.data.label, b.jsx("small", { children: Z.data.prompt.slice(0, 60) || "空白输入" })] }), b.jsx(Wu, { size: 16 })] }, Z.id)), b.jsxs("button", { className: "btn full", onClick: () => {
-    const source=Ee?.nodes.find(node=>node.id===H);
-    const Z = bt(source?.data.kind === "image" ? "image" : "chat",source?lc16Right(Ee,source,"input"):undefined,false,true);
-    Z && Dt(H, Z.id);
-  }, children: [b.jsx(Vl, { size: 16 }), "创建新输入并引用"] })] }) }), G && b.jsx(hc, { title: "操作与快捷键", onClose: Li, children: b.jsxs("div", { className: "help-content", children: [b.jsxs("div", { className: "help-intro", children: [b.jsx(Mv, { size: 22 }), b.jsx("p", { children: "鼠标与触摸板都能完整操作。拖动标题栏移动节点，正文可以正常选字。" })] }), b.jsxs("label", { className: "field", children: ["滚动方式", b.jsxs("select", { className: "select", value: _, onChange: (Z) => {
+  }, children: "确认发送新请求" })] })] }) }), ie && b.jsx(hc, { title: ie.title, onClose: ul, wide: true, children: b.jsxs("div", { className: "preview-content", children: [b.jsx("p", { className: "muted", children: "以下内容由当前节点和明确选择的来源组成。提示词不润色，图片不压缩；查看不会调用 API。" }), b.jsx("pre", { className: "request-json", children: JSON.stringify(ie.data, null, 2) }), b.jsxs("button", { className: "btn", onClick: () => Ql(JSON.stringify(ie.data, null, 2)), children: [b.jsx(Xa, { size: 15 }), "复制请求记录"] })] }) }), G && b.jsx(hc, { title: "操作与快捷键", onClose: Li, children: b.jsxs("div", { className: "help-content", children: [b.jsxs("div", { className: "help-intro", children: [b.jsx(Mv, { size: 22 }), b.jsx("p", { children: "鼠标与触摸板都能完整操作。拖动标题栏移动节点，正文可以正常选字。" })] }), b.jsxs("label", { className: "field", children: ["滚动方式", b.jsxs("select", { className: "select", value: _, onChange: (Z) => {
     const ue = Z.target.value;
     se(ue), localStorage.setItem("lc-scroll-mode", ue), V2("/preferences", { key: "scroll-mode", value: ue }).catch((ge) => be(ge.message));
-  }, children: [b.jsx("option", { value: "pan", children: "滚动平移（触摸板推荐）" }), b.jsx("option", { value: "zoom", children: "滚动缩放（鼠标习惯）" })] })] }), b.jsx("dl", { className: "shortcut-list", children: [["发送当前提示词", "Ctrl / Cmd + Enter"], ["新建输入 / 继续追问", "N / B"], ["连接引用 / 展开阅读", "C / E"], ["删除所选节点或线", "Delete / Backspace"], ["撤销 / 重做", "Ctrl + Z / Ctrl + Shift + Z"], ["多选", "Shift + 点击"], ["框选", "左键拖动空白处，碰到即选中"], ["拖动对齐", "默认吸附边缘/中心，Alt 临时自由拖动"], ["复制 / 粘贴节点", "Ctrl / Cmd + C / V"], ["粘贴图片为参考节点", "Ctrl / Cmd + V"], ["适合全部 / 定位所选", "F / Shift + F"], ["恢复 100%", "0"], ["移动画布", "中键拖动 / Space + 拖动"], ["缩放", "捏合 / Ctrl + 滚轮"], ["取消当前操作", "Esc"]].map(([Z, ue]) => b.jsxs("div", { children: [b.jsx("dt", { children: Z }), b.jsx("dd", { children: b.jsx("kbd", { children: ue }) })] }, Z)) }), b.jsx("p", { className: "small muted", children: "输入文字、中文选字或阅读窗口打开时，画布快捷键暂停。普通 Enter 换行。连线也可先点输出端，再点目标输入端。" })] }) })] }) : b.jsxs("div", { className: "app-loading", children: [b.jsx("div", { className: "brand-mark", children: b.jsx(wr, { size: 21 }) }), b.jsx("p", { children: "正在打开你的画布…" })] });
+  }, children: [b.jsx("option", { value: "pan", children: "滚动平移（触摸板推荐）" }), b.jsx("option", { value: "zoom", children: "滚动缩放（鼠标习惯）" })] })] }), b.jsx("dl", { className: "shortcut-list", children: [["发送当前提示词", "Ctrl / Cmd + Enter"], ["新建输入 / 继续追问", "N / B"], ["展开阅读", "E"], ["删除所选节点或线", "Delete / Backspace"], ["撤销 / 重做", "Ctrl + Z / Ctrl + Shift + Z"], ["多选", "Shift + 点击"], ["框选", "左键拖动空白处，碰到即选中"], ["拖动对齐", "默认吸附边缘/中心，Alt 临时自由拖动"], ["复制 / 粘贴节点", "Ctrl / Cmd + C / V"], ["粘贴图片为参考节点", "Ctrl / Cmd + V"], ["适合全部 / 定位所选", "F / Shift + F"], ["恢复 100%", "0"], ["移动画布", "中键拖动 / Space + 拖动"], ["缩放", "捏合 / Ctrl + 滚轮"], ["取消当前操作", "Esc"]].map(([Z, ue]) => b.jsxs("div", { children: [b.jsx("dt", { children: Z }), b.jsx("dd", { children: b.jsx("kbd", { children: ue }) })] }, Z)) }), b.jsx("p", { className: "small muted", children: "输入文字、中文选字或阅读窗口打开时，画布快捷键暂停。普通 Enter 换行。连线也可先点输出端，再点目标输入端。" })] }) })] }) : b.jsxs("div", { className: "app-loading", children: [b.jsx("div", { className: "brand-mark", children: b.jsx(wr, { size: 21 }) }), b.jsx("p", { children: "正在打开你的画布…" })] });
 }
 const Mb = location.pathname.match(/^\/reader\/([^/]+)$/);
 Kk.createRoot(document.getElementById("root")).render(Mb ? b.jsx(rE, { runId: decodeURIComponent(Mb[1]), standalone: true }) : b.jsx(T2, { children: b.jsx(V8, {}) }));

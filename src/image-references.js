@@ -7,11 +7,40 @@ window.LightCanvasImages=(()=>{
     const id=run?.outputAssets?run.outputAssets[node.data.resultIndex]:ids[node.data.resultIndex];
     return id&&ids.includes(id)?[id]:[];
   };
-  function assign(workspace,runs={}){
+  function links(workspace,node,runs){
+    const ids=new Set(node?.data?.assetIds||[]),single=new Set();
+    for(const edge of workspace.edges||[])if(edge.target===node.id&&edge.data?.kind!=='generation'){
+      const assets=idsOf(workspace.nodes.find(n=>n.id===edge.source),runs);
+      for(const id of assets)ids.add(id);if(assets.length===1)single.add(assets[0]);
+    }
+    return {ids:[...ids],single};
+  }
+  function assign(workspace,runs={},previous){
     const imageLabels={...(workspace.imageLabels||{})};
     let next=Math.max(0,...Object.values(imageLabels).map(label=>Number(/^图(\d+)$/.exec(label)?.[1])||0))+1;
     for(const node of workspace.nodes)for(const id of idsOf(node,runs))if(!imageLabels[id])imageLabels[id]=`图${next++}`;
-    return {...workspace,imageLabels};
+    const nodes=workspace.nodes.map(node=>{
+      if(node.data.kind!=='input'||node.data.mode!=='image')return node;
+      const current=links(workspace,node,runs),before=previous?.nodes.find(n=>n.id===node.id),old=before?links(previous,before,runs):null;
+      const restored=new Set(current.single);
+      if(previous)for(const edge of workspace.edges.filter(e=>e.target===node.id&&!previous.edges.some(old=>old.id===e.id)))for(const id of idsOf(workspace.nodes.find(n=>n.id===edge.source),runs))restored.add(id);
+      const excluded=(node.data.excludedImageIds||[]).filter(id=>!restored.has(id));
+      const available=current.ids.filter(id=>!excluded.includes(id)),labels=available.map(id=>imageLabels[id]);
+      const detached=new Set(node.data.detachedImageLabels||[]);
+      if(old)for(const id of old.ids)if(!current.ids.includes(id)&&imageLabels[id])detached.add(imageLabels[id]);
+      const graphChanged=!previous||!!old&&(old.ids.length!==current.ids.length||old.ids.some(id=>!current.ids.includes(id)))||excluded.length!==(node.data.excludedImageIds||[]).length;
+      let prompt=node.data.prompt||'';
+      const stale=[...new Set(mentions(prompt).map(m=>m.label).filter(label=>!labels.includes(label)))];
+      if(graphChanged&&stale.length===1&&labels.length===1&&mentions(prompt).every(m=>m.label===stale[0])){
+        const known=new Set(detached);
+        for(const run of Object.values(runs))if(run.inputNodeId===node.id)for(const id of run.snapshot?.assetIds||[])if(imageLabels[id])known.add(imageLabels[id]);
+        if(known.has(stale[0])){const oldLabel=stale[0];prompt=prompt.replace(/@(?:图片|图)([1-9]\d*)(?!\d)/g,(token,n)=>`图${n}`===oldLabel?'@'+labels[0]:token);detached.delete(oldLabel);}
+      }
+      const pending=[...detached].filter(label=>mentions(prompt).some(m=>m.label===label));
+      if(prompt===node.data.prompt&&excluded.length===(node.data.excludedImageIds||[]).length&&JSON.stringify(pending)===JSON.stringify(node.data.detachedImageLabels||[]))return node;
+      return {...node,data:{...node.data,prompt,excludedImageIds:excluded,detachedImageLabels:pending}};
+    });
+    return {...workspace,nodes,imageLabels};
   }
   function catalog(workspace,runs={},assets={}){
     if(!workspace)return[];
