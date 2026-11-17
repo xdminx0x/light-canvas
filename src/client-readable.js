@@ -19463,7 +19463,7 @@ function tE(e12, i) {
     }
   return i.quality && l.qualities && !l.qualities.includes(i.quality) && a.push(`已保留质量 ${i.quality}，当前模型不支持；请重新选择质量。`), i.n !== void 0 && (!Number.isInteger(i.n) || i.n < 1 || l.maxCount !== void 0 && i.n > l.maxCount) && a.push(l.maxCount === 1 ? "当前模型每次只支持 1 张，请修改张数。" : `张数需为 1${l.maxCount ? `–${l.maxCount}` : " 或更大"}的整数。`), a;
 }
-const M8 = { auto: "自动", low: "低 · low", medium: "中 · medium", high: "高 · high", xhigh: "极高 · xhigh", max: "最高 · max", standard: "标准 · standard", hd: "高清 · hd" }, j8 = { "1:1": "1:1 方形", "3:2": "3:2 横向", "2:3": "2:3 纵向", "16:9": "16:9 宽屏", "9:16": "9:16 竖屏", "4:3": "4:3 横向", "3:4": "3:4 纵向", "7:4": "7:4 横向", "4:7": "4:7 纵向" };
+const M8 = { auto: "自动", low: "低", medium: "中", high: "高", xhigh: "极高", max: "最高", standard: "标准", hd: "高清" }, j8 = { "1:1": "1:1 方形", "3:2": "3:2 横向", "2:3": "2:3 纵向", "16:9": "16:9 宽屏", "9:16": "9:16 竖屏", "4:3": "4:3 横向", "3:4": "3:4 纵向", "7:4": "7:4 横向", "4:7": "4:7 纵向" };
 // Replace the complete existing nE function with this snippet.
 // Bundle dependencies: b (JSX runtime), L (React), Wp, M8, eg, WS, tE, jp, vc.
 const lc12ImageRatios = ["auto", "1:1", "9:16", "16:9", "3:4", "4:3", "2:3", "3:2", "9:21", "21:9"];
@@ -19687,7 +19687,7 @@ function lc13NodeOptions({data,children}) {
   if(image) {
     parts.push(selection.ratio === "auto" ? "智能比例" : selection.ratio);
     parts.push(selection.tier === "auto" ? (selection.dimensions ? selection.dimensions.width+"×"+selection.dimensions.height : "自动尺寸") : selection.tier.toUpperCase());
-    parts.push("细节 "+(M8[data.params?.quality]||data.params?.quality||"接口默认"));
+    parts.push(M8[data.params?.quality]||data.params?.quality||"默认");
   }
   const label=image ? "模型与图片设置" : "聊天模型";
   return b.jsxs("details",{className:"node-configuration nodrag nowheel",children:[

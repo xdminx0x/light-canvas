@@ -22,9 +22,9 @@ try{
  assert.equal(recovery.status,'unknown');assert.equal(recovery.seq,3);assert.equal(recovery.snapshot.currentPrompt,'preserved original');assert.equal(recovery.assetIds.length,0);assert.ok(recovery.error.includes('重新加载'));
  const input=page.locator('[data-id="input"]'),result=page.locator('[data-id="result"]'),ref=page.locator('[data-id="ref"]');
  // Detail is the native quality parameter, reflected in the collapsed summary.
- await input.getByLabel('模型与图片设置',{exact:true}).click();await input.getByLabel('细节等级',{exact:true}).selectOption('high');
+ await input.getByLabel('模型与图片设置',{exact:true}).click();await input.getByLabel('细节等级',{exact:true}).selectOption('high');assert.equal(await input.getByLabel('细节等级',{exact:true}).locator('option:checked').textContent(),'高');
  await page.waitForFunction(()=>window.__lcBackend.getState().workspace.w.nodes.find(n=>n.id==='input').data.params.quality==='high');
- const plan=await page.evaluate(()=>fetch('/api/preview',{method:'POST',body:JSON.stringify({workspaceId:'w',nodeId:'input'})}).then(r=>r.json()));assert.equal(plan.request.quality,'high');assert.equal(plan.request.prompt,'Original prompt');assert.ok(await input.locator('.node-configuration-current').textContent().then(t=>t.includes('细节 高')));
+ const plan=await page.evaluate(()=>fetch('/api/preview',{method:'POST',body:JSON.stringify({workspaceId:'w',nodeId:'input'})}).then(r=>r.json()));assert.equal(plan.request.quality,'high');assert.equal(plan.request.prompt,'Original prompt');assert.ok(await input.locator('.node-configuration-current').textContent().then(t=>t.split(' · ').at(-1)==='高'&&!t.includes('high')&&!t.includes('细节')));
  const options=await input.getByLabel('细节等级',{exact:true}).locator('option').evaluateAll(o=>o.map(x=>x.value));assert.deepEqual(options,['','auto','low','medium','high']);
  await input.getByLabel('节点模型',{exact:true}).selectOption('test::gpt-image-2.6-flare');assert.ok((await input.getByLabel('细节等级',{exact:true}).locator('option').evaluateAll(o=>o.map(x=>x.value))).includes('max'));await input.getByLabel('节点模型',{exact:true}).selectOption('test::gpt-image-2');await input.getByLabel('模型与图片设置',{exact:true}).click();
  // Existing click-to-open remains, while the selected frame becomes visibly darker.

@@ -253,3 +253,6 @@
 .history-viewer-navigation button:disabled{opacity:.4;cursor:default}
 .history-viewer-navigation span{font-variant-numeric:tabular-nums;text-align:center}
 @media(max-width:480px){.history-viewer-navigation{gap:8px;font-size:11px}.history-viewer-navigation span{max-width:14ch}}
+
+/* The selection frame must not cover editable node contents. Group drag uses node headers. */
+.react-flow__nodesselection-rect{pointer-events:none}
